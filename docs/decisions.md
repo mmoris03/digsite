@@ -659,8 +659,8 @@ through the one connection, and passed 20 runs out of 20.
 
 **Decision.** The last milestone packages the system to run with one command
 (Docker Compose, with Ollama alongside) and checks it on every change
-(continuous integration). It is not deployed on the internet. The README shows
-the page working with screenshots instead.
+(continuous integration). It is not deployed on the internet. Screenshots in
+the README are to show the page working instead, once the page is final.
 
 **Why.** What makes a public demo costly is the language model, not the page.
 Without a GPU, an answer takes one to two minutes and concurrent questions wait
