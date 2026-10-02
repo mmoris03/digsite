@@ -1,0 +1,71 @@
+# digsite and the language model it answers with, on this computer.
+#
+#   docker compose run --rm --no-deps digsite crawl --seed https://... --prefix https://...
+#   docker compose run --rm --no-deps digsite ingest
+#   docker compose run --rm --no-deps digsite index --language spanish
+#   docker compose up                serve the corpus in ./data at http://127.0.0.1:8000/
+#   docker compose run --rm digsite ask "..."
+#
+# DIGSITE_LLM chooses the language model (default: gemma3:4b). It is
+# downloaded into the `ollama` volume the first time, which takes a while.
+
+services:
+  digsite:
+    build: .
+    image: digsite
+    # Every command run in this service finds the language model here, not only the server.
+    environment:
+      DIGSITE_LLM: ${DIGSITE_LLM:-gemma3:4b}
+      DIGSITE_LLM_URL: http://ollama:11434
+    ports:
+      # This computer only: the server has no authentication.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/app/data
+      - embedding-models:/home/app/.cache/huggingface
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/status', timeout=5)
+      interval: 30s
+      timeout: 10s
+      start_period: 5m
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:0.35.0
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    # With an NVIDIA GPU and its container toolkit, answers take seconds instead of minutes:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Downloads the language model once, then exits. Search works meanwhile.
+  ollama-pull:
+    image: ollama/ollama:0.35.0
+    entrypoint: ["ollama", "pull", "${DIGSITE_LLM:-gemma3:4b}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  embedding-models:
+  ollama:

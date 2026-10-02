@@ -673,3 +673,53 @@ quality than a few questions tried on a demo would.
 **What would change it.** A search-only demo is cheap: search does not need the
 language model, answers in milliseconds and runs on a small CPU instance from
 the same image. It can be added later without touching the code.
+
+## 32. One image for every command, and the data outside it
+
+**Decision.** The `Dockerfile` packages the command line, not only the server:
+`docker compose run --rm digsite crawl …` works like `digsite crawl …`, and
+the image's default command is `serve`. The corpus lives in `./data`, mounted
+into the container, and the embedding model in a Docker volume; neither is
+part of the image. `compose.yaml` adds Ollama and a one-off service that pulls
+the language model.
+
+**Why the CPU build of PyTorch.** The embedding model needs PyTorch, and the
+default Linux wheel brings the CUDA libraries with it: gigabytes that a CPU
+container never uses. It is installed first, from PyTorch's CPU index, so that
+`sentence-transformers` finds it already there. The image is about 2 GB, of
+which PyTorch is 0.8 and the rest of the embedding model's libraries
+(transformers, scipy, scikit-learn) most of the remainder.
+
+**Why the corpus is not in the image.** It is built by the user, from the site
+they choose, and it changes when they crawl or index again. In a volume it
+outlives the containers, and a corpus built without Docker can be served with
+it and the other way round: it is the same SQLite file.
+
+**Why the language model is configured through the environment.**
+`DIGSITE_LLM` and `DIGSITE_LLM_URL` set the defaults of `--llm` and
+`--llm-url`, and an option on the command line still wins. Compose sets them
+once, so `ask`, `serve` and `eval answers` all find Ollama at `ollama:11434`
+without repeating it in every command.
+
+**Why nothing is exposed beyond this computer.** The port is published on
+127.0.0.1, and the container runs as an unprivileged user. The server has no
+authentication (decision 29), and there is no public deployment (decision 31).
+
+## 33. Continuous integration runs everything that does not need the network
+
+**Decision.** On every push to `main` and every pull request, GitHub Actions
+runs, on Linux: `ruff check`, `ruff format --check`, `mypy` and `pytest`; and,
+in a second job, builds the container image and runs `digsite --version` in it.
+
+**What is left out.** The six tests marked `model` load the real embedding
+model, which means downloading it from Hugging Face on every run. Everything
+else runs offline: the crawler against an in-memory site, the language model
+scripted, a hashing embedder in place of the neural one. That is what keeps the
+suite fast and deterministic in CI; the model tests are run by hand.
+
+**Why the image is built in CI.** A Dockerfile that is not built breaks
+without anyone noticing, usually through a dependency. Building it on every
+push costs a few minutes and catches that.
+
+**Why on Linux.** The project was developed on Windows. CI is the first place
+it runs on another system, which is what a user of the container gets.

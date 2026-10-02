@@ -97,6 +97,23 @@ def test_ask_uses_the_model_and_server_it_is_told(
     ]
 
 
+def test_the_environment_sets_the_default_model_and_server(
+    data_dir: str, scripted, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    factory = scripted(ANSWERED, ANSWERED)
+    monkeypatch.setenv("DIGSITE_LLM", "qwen2.5:3b")
+    monkeypatch.setenv("DIGSITE_LLM_URL", "http://ollama:11434")
+
+    main(["ask", "cache", "--rewrites", "0", "--data-dir", data_dir])
+    main(["ask", "cache", "--rewrites", "0", "--llm", "llama3.2:3b", "--data-dir", data_dir])
+
+    # An option on the command line still wins over the environment.
+    assert factory.built == [
+        ("qwen2.5:3b", "http://ollama:11434"),
+        ("llama3.2:3b", "http://ollama:11434"),
+    ]
+
+
 def test_ask_without_rewrites_calls_the_model_once(
     data_dir: str, scripted, capsys: pytest.CaptureFixture[str]
 ) -> None:

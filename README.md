@@ -1,5 +1,7 @@
 # Digsite
 
+[![CI](https://github.com/mmoris03/digsite/actions/workflows/ci.yml/badge.svg)](https://github.com/mmoris03/digsite/actions/workflows/ci.yml)
+
 A hybrid search engine (lexical and semantic, with link authority on request)
 with a RAG layer on top, built from first principles: every stage of the pipeline is
 implemented and tested in this repository, without LangChain, LangGraph or any
@@ -25,19 +27,44 @@ way it is, [`docs/decisions.md`](docs/decisions.md).
 | 6 | PageRank over the link graph and hybrid fusion (RRF) | Done |
 | 7 | RAG: query rewriting, passage selection, answers with citations | Done |
 | 8 | HTTP API and web UI | Done |
-| 9 | Containers (Docker Compose, with Ollama) and continuous integration | Planned |
+| 9 | Containers (Docker Compose, with Ollama) and continuous integration | Done |
 
 ## Quick start
 
-Requires Python 3.14 or later.
+### With Docker
+
+Requires Docker with Compose. Crawl a section of a site, turn the pages into
+documents, index them, and serve them with the language model:
+
+```powershell
+git clone https://github.com/mmoris03/digsite.git
+cd digsite
+docker compose run --rm --no-deps digsite crawl --seed https://docs.python.org/es/3/tutorial/ --prefix https://docs.python.org/es/3/ --max-depth 1
+docker compose run --rm --no-deps digsite ingest
+docker compose run --rm --no-deps digsite index --language spanish
+docker compose up      # then open http://127.0.0.1:8000/
+```
+
+The corpus is kept in `./data`, so it survives the containers. The first run
+downloads the embedding model (about 470 MB) and the language model
+(`gemma3:4b`, 3.3 GB) into Docker volumes; searching works while the language
+model downloads. To use another model, set `DIGSITE_LLM`, e.g.
+`DIGSITE_LLM=qwen2.5:3b docker compose up`. Without a GPU an answer takes one
+to two minutes; `compose.yaml` shows how to give Ollama an NVIDIA GPU.
+
+Any other command runs the same way: `docker compose run --rm digsite ask
+"…"`, `docker compose run --rm --no-deps digsite stats`.
+
+### With Python
+
+Requires Python 3.14 or later, and [Ollama](https://ollama.com) with a model
+pulled (`ollama pull gemma3:4b`) to answer questions.
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e . --group dev
 ```
-
-Crawl a section of a site, turn the pages into documents, index them and search:
 
 ```powershell
 digsite crawl --seed https://docs.python.org/es/3/tutorial/ --prefix https://docs.python.org/es/3/ --max-depth 1
@@ -736,6 +763,9 @@ src/digsite/
     authority_store.py   link score of each document
 benchmarks/            labelled queries for the example corpus
 scripts/               download test collections
+Dockerfile             the command line in a container, CPU-only
+compose.yaml           the server and Ollama, together
+.github/workflows/     continuous integration
 tests/                 mirrors the package; no test touches the network
   test_architecture.py   the rules of the dependencies between packages
 docs/decisions.md      why things are the way they are
@@ -814,3 +844,12 @@ mypy                   # strict type checking
 
 The crawler is tested against an in-memory fake site, with no network access
 and no real waiting.
+
+Every push and pull request runs the same checks and tests on GitHub Actions,
+on Linux, and builds the container image
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). The tests that load
+the real embedding model are left out there, because they download it.
+
+## License
+
+[MIT](LICENSE).

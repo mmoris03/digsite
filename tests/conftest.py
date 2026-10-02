@@ -27,3 +27,10 @@ def store(connection: sqlite3.Connection) -> CrawlStore:
 @pytest.fixture
 def document_store(connection: sqlite3.Connection) -> DocumentStore:
     return DocumentStore(connection)
+
+
+@pytest.fixture(autouse=True)
+def no_settings_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the defaults of the command line from depending on the machine running the tests."""
+    for name in ("DIGSITE_LLM", "DIGSITE_LLM_URL"):
+        monkeypatch.delenv(name, raising=False)

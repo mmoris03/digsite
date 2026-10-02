@@ -1,6 +1,7 @@
 """Options and helpers shared by several commands."""
 
 import argparse
+import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -195,18 +196,21 @@ def missing_corpus(path: Path) -> bool:
 
 
 def language_model_options() -> argparse.ArgumentParser:
+    # Environment variables set the defaults once for every command, as a
+    # container does; an option on the command line still wins.
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
         "--llm",
-        default=DEFAULT_LANGUAGE_MODEL,
+        default=os.environ.get("DIGSITE_LLM") or DEFAULT_LANGUAGE_MODEL,
         metavar="NAME",
-        help=f"language model, as 'ollama list' shows it (default: {DEFAULT_LANGUAGE_MODEL})",
+        help="language model, as 'ollama list' shows it "
+        f"(default: $DIGSITE_LLM, or {DEFAULT_LANGUAGE_MODEL})",
     )
     parser.add_argument(
         "--llm-url",
-        default=DEFAULT_LANGUAGE_MODEL_URL,
+        default=os.environ.get("DIGSITE_LLM_URL") or DEFAULT_LANGUAGE_MODEL_URL,
         metavar="URL",
-        help=f"where Ollama listens (default: {DEFAULT_LANGUAGE_MODEL_URL})",
+        help=f"where Ollama listens (default: $DIGSITE_LLM_URL, or {DEFAULT_LANGUAGE_MODEL_URL})",
     )
     return parser
 
