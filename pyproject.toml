@@ -7,6 +7,9 @@ name = "digsite"
 version = "0.1.0"
 description = "Hybrid search engine and RAG pipeline built from first principles"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Miguel Moris Gómez" }]
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.140",
