@@ -3,7 +3,6 @@
 from contextlib import closing
 from pathlib import Path
 
-from digsite.cli.common import CORPUS_FILENAME
 from digsite.store import CrawlStore, connect
 from fakes import article_html
 
@@ -26,9 +25,9 @@ LOGGING = article_html(
 )
 
 
-def make_corpus(data_dir: Path, pages: dict[str, str]) -> None:
+def make_corpus(data_dir: Path, pages: dict[str, str], *, collection: str = "corpus") -> None:
     """Create a corpus whose stored pages have the given HTML, by URL path."""
-    with closing(connect(data_dir / CORPUS_FILENAME)) as connection:
+    with closing(connect(data_dir / f"{collection}.db")) as connection:
         store = CrawlStore(connection)
         for path, html in pages.items():
             store.save_page(f"{SITE}{path}", 0, html.encode(), content_type="text/html")

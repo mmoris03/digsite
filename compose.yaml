@@ -1,10 +1,11 @@
 # digsite and the language model it answers with, on this computer.
 #
-#   docker compose run --rm --no-deps digsite crawl --seed https://... --prefix https://...
-#   docker compose run --rm --no-deps digsite ingest
-#   docker compose run --rm --no-deps digsite index --language spanish
-#   docker compose up                serve the corpus in ./data at http://127.0.0.1:8000/
-#   docker compose run --rm digsite ask "..."
+#   docker compose up        then open http://127.0.0.1:8000/ and add a website
+#
+# The command line works too, on the same collections:
+#
+#   docker compose run --rm digsite search --collection ID "..."
+#   docker compose run --rm digsite ask --collection ID "..."
 #
 # DIGSITE_LLM chooses the language model (default: gemma3:4b). It is
 # downloaded into the `ollama` volume the first time, which takes a while.
@@ -21,7 +22,9 @@ services:
       # This computer only: the server has no authentication.
       - "127.0.0.1:8000:8000"
     volumes:
-      - ./data:/app/data
+      # A volume, not a folder of the host: the server writes the collections it
+      # builds, and a volume takes the owner of /app/data in the image.
+      - data:/app/data
       - embedding-models:/home/app/.cache/huggingface
     depends_on:
       ollama:
@@ -67,5 +70,6 @@ services:
     restart: "no"
 
 volumes:
+  data:
   embedding-models:
   ollama:

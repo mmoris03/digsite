@@ -15,7 +15,7 @@ from digsite.index.inverted_index import IndexBuilder, InvertedIndex
 from digsite.index.lexical_index_store import LexicalIndexStore
 from digsite.index.link_graph import document_links
 from digsite.index.pagerank import DEFAULT_DAMPING, pagerank
-from digsite.models import Document, Passage
+from digsite.models import Document, Passage, Progress
 from digsite.store import (
     AuthorityStore,
     ChunkStore,
@@ -90,6 +90,7 @@ def build_index(
     *,
     embedder: Embedder | None = None,
     max_chars: int = DEFAULT_MAX_CHARS,
+    progress: Progress | None = None,
 ) -> IndexStats:
     """Chunk every unique document and build the lexical and vector indexes.
 
@@ -104,6 +105,8 @@ def build_index(
         settings: How text is analyzed for the lexical index.
         embedder: Model to embed the chunks with. None skips the vector index.
         max_chars: Upper bound on the size of a chunk.
+        progress: Told the chunks embedded so far, out of those that need it, after
+            each batch. Embedding is the slow part of indexing.
     """
     documents = document_store.documents()
     chunk_store.replace_all(
@@ -121,6 +124,8 @@ def build_index(
             batch = pending[start : start + _EMBEDDING_BATCH]
             vectors = embedder.embed_passages([text for _, text in batch])
             chunk_store.save_embeddings(embedder.name, [key for key, _ in batch], vectors)
+            if progress is not None:
+                progress(min(start + len(batch), len(pending)), len(pending))
             logger.info(
                 "embedded %d/%d chunks", min(start + len(batch), len(pending)), len(pending)
             )

@@ -56,6 +56,10 @@ class FakeSite:
         # httpx responses are single-use, so serve a copy.
         return httpx.Response(route.status_code, headers=route.headers, content=route.content)
 
+    def new_client(self) -> httpx.Client:
+        """Another client of the same site, for code that closes the clients it is given."""
+        return httpx.Client(transport=httpx.MockTransport(self._handle))
+
     @property
     def pages_requested(self) -> list[str]:
         """Requested URLs, robots.txt files excluded."""

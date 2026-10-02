@@ -1,29 +1,30 @@
 """The serve command."""
 
 import argparse
-from contextlib import closing
+import logging
+import threading
 
 from digsite.cli.common import (
     Subparsers,
     answer_options,
     answer_settings,
-    corpus_options,
-    corpus_path,
     fail,
     invalid_answer_options,
     language_model,
-    missing_corpus,
+    library_options,
     search_mode,
 )
-from digsite.search.corpus import CorpusSearch, MissingIndexError
-from digsite.store import SchemaVersionError, connect
+from digsite.library import BuildQueue, Library
+
+logger = logging.getLogger(__name__)
 
 
 def register(commands: Subparsers) -> None:
     serve = commands.add_parser(
         "serve",
-        parents=[corpus_options(), answer_options()],
-        help="serve search and answers over HTTP, with a page to use them from a browser",
+        parents=[library_options(), answer_options()],
+        help="serve the collections over HTTP, with a page to search them, ask questions "
+        "and add websites",
     )
     serve.add_argument(
         "--host",
@@ -35,9 +36,6 @@ def register(commands: Subparsers) -> None:
 
 
 def _serve(args: argparse.Namespace) -> int:
-    path = corpus_path(args)
-    if missing_corpus(path):
-        return 1
     if problem := invalid_answer_options(args):
         return fail(problem)
 
@@ -46,22 +44,23 @@ def _serve(args: argparse.Namespace) -> int:
 
     from digsite.api import create_app
 
-    try:
-        connection = connect(path, read_only=True)
-    except SchemaVersionError as error:
-        return fail(str(error))
-    with closing(connection):
-        corpus = CorpusSearch(connection)
-        mode = search_mode(args) or corpus.default_mode
-        try:
-            # Load the indexes and the embedding model now, not on the first request.
-            corpus.retriever(mode)
-        except MissingIndexError as error:
-            return fail(str(error))
-        _ = corpus.page_ids
-        app = create_app(
-            corpus, language_model(args), default_mode=mode, settings=answer_settings(args)
+    library = Library(args.data_dir)
+    for collection_id in library.remove_partial_builds():
+        logger.warning(
+            "removed %s, which was being built when the server last stopped", collection_id
         )
-        print(f"serving {path} at http://{args.host}:{args.port}/ (Ctrl+C to stop)")
+    app = create_app(
+        library,
+        BuildQueue(library),
+        language_model(args),
+        default_mode=search_mode(args),
+        settings=answer_settings(args),
+    )
+    # Searches work at once; this only spares the first search of each collection the wait.
+    threading.Thread(target=library.load_all, name="load-collections", daemon=True).start()
+    print(f"serving {args.data_dir} at http://{args.host}:{args.port}/ (Ctrl+C to stop)")
+    try:
         uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    finally:
+        library.close()
     return 0

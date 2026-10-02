@@ -176,3 +176,20 @@ def test_decodes_the_body_with_the_charset_of_the_page(
     ingest(store, document_store, extract=FakeExtractor())
 
     assert document_store.documents()[0].text == text
+
+
+def test_reports_progress_after_each_extracted_page(
+    store: CrawlStore, document_store: DocumentStore
+) -> None:
+    add_page(store, "/a", ARTICLE)
+    add_page(store, "/b", UNRELATED)
+    reports: list[tuple[int, int]] = []
+
+    ingest(
+        store,
+        document_store,
+        extract=FakeExtractor(),
+        progress=lambda done, total: reports.append((done, total)),
+    )
+
+    assert reports == [(1, 2), (2, 2)]

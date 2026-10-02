@@ -9,6 +9,7 @@ from pathlib import Path
 from digsite.answer import AnswerSettings
 from digsite.embedding import DEFAULT_MODEL
 from digsite.index.analyzer import AnalyzerSettings, Language
+from digsite.library import DEFAULT_COLLECTION, is_collection_id
 from digsite.llm import DEFAULT_MODEL as DEFAULT_LANGUAGE_MODEL
 from digsite.llm import DEFAULT_URL as DEFAULT_LANGUAGE_MODEL_URL
 from digsite.llm import LanguageModel, create_language_model
@@ -17,7 +18,7 @@ from digsite.search.corpus import SearchMode
 from digsite.search.expansion import ExpansionSettings
 from digsite.search.fusion import DEFAULT_RANK_CONSTANT
 
-CORPUS_FILENAME = "corpus.db"
+CORPUS_FILENAME = f"{DEFAULT_COLLECTION}.db"
 
 # argparse's type for the object returned by add_subparsers().
 type Subparsers = argparse._SubParsersAction[argparse.ArgumentParser]
@@ -29,13 +30,33 @@ def verbosity_options() -> argparse.ArgumentParser:
     return parser
 
 
-def corpus_options() -> argparse.ArgumentParser:
+def library_options() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False, parents=[verbosity_options()])
     parser.add_argument(
         "--data-dir",
         type=Path,
         default=Path("data"),
-        help="directory that holds the corpus (default: data)",
+        help="directory that holds the collections, one file each (default: data)",
+    )
+    return parser
+
+
+def _collection_id(text: str) -> str:
+    if not is_collection_id(text):
+        raise argparse.ArgumentTypeError(
+            "use lowercase letters, digits and hyphens, starting with a letter or digit"
+        )
+    return text
+
+
+def corpus_options() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(add_help=False, parents=[library_options()])
+    parser.add_argument(
+        "--collection",
+        type=_collection_id,
+        default=DEFAULT_COLLECTION,
+        metavar="ID",
+        help=f"collection to work on, stored as <data-dir>/<ID>.db (default: {DEFAULT_COLLECTION})",
     )
     return parser
 
@@ -177,7 +198,7 @@ def bm25_params(args: argparse.Namespace) -> Bm25Params:
 
 
 def corpus_path(args: argparse.Namespace) -> Path:
-    path: Path = args.data_dir / CORPUS_FILENAME
+    path: Path = args.data_dir / f"{args.collection}.db"
     return path
 
 

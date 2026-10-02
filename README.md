@@ -28,32 +28,34 @@ way it is, [`docs/decisions.md`](docs/decisions.md).
 | 7 | RAG: query rewriting, passage selection, answers with citations | Done |
 | 8 | HTTP API and web UI | Done |
 | 9 | Containers (Docker Compose, with Ollama) and continuous integration | Done |
+| 10 | Websites added from the page, one collection each, built in the background | Done |
 
 ## Quick start
 
 ### With Docker
 
-Requires Docker with Compose. Crawl a section of a site, turn the pages into
-documents, index them, and serve them with the language model:
+Requires Docker with Compose.
 
 ```powershell
 git clone https://github.com/mmoris03/digsite.git
 cd digsite
-docker compose run --rm --no-deps digsite crawl --seed https://docs.python.org/es/3/tutorial/ --prefix https://docs.python.org/es/3/ --max-depth 1
-docker compose run --rm --no-deps digsite ingest
-docker compose run --rm --no-deps digsite index --language spanish
-docker compose up      # then open http://127.0.0.1:8000/
+docker compose up
 ```
 
-The corpus is kept in `./data`, so it survives the containers. The first run
-downloads the embedding model (about 470 MB) and the language model
-(`gemma3:4b`, 3.3 GB) into Docker volumes; searching works while the language
-model downloads. To use another model, set `DIGSITE_LLM`, e.g.
+Then open <http://127.0.0.1:8000/>, give it the address of a website, such as
+`https://docs.python.org/3/tutorial/`, and wait for it to be crawled and
+indexed. Then search it, or ask it questions. Add as many websites as you like
+and choose which one to search from the page.
+
+The first run downloads the embedding model (about 470 MB) and the language
+model (`gemma3:4b`, 3.3 GB) into Docker volumes; searching works while the
+language model downloads. The websites are kept in a volume too, so they
+survive the containers. To use another model, set `DIGSITE_LLM`, e.g.
 `DIGSITE_LLM=qwen2.5:3b docker compose up`. Without a GPU an answer takes one
 to two minutes; `compose.yaml` shows how to give Ollama an NVIDIA GPU.
 
-Any other command runs the same way: `docker compose run --rm digsite ask
-"…"`, `docker compose run --rm --no-deps digsite stats`.
+The command line works on the same websites, e.g.
+`docker compose run --rm digsite search --collection docs-python-org-3-tutorial "…"`.
 
 ### With Python
 
@@ -73,6 +75,8 @@ digsite index --language spanish
 digsite search qué hago cuando mi programa falla
 digsite serve      # then open http://127.0.0.1:8000/
 ```
+
+The server can also add websites itself, from the page, as with Docker.
 
 Each result is a document, shown with the section and the start of its best
 passage. On the example corpus used throughout this README (86 pages of the
@@ -124,10 +128,11 @@ lexical search.
 The pipeline is a chain of stages, each a package: `crawl` downloads pages,
 `ingest` extracts and de-duplicates their content, `index` makes it searchable,
 `search` ranks it, and `answer` writes answers from it. Underneath, `store`
-keeps everything in one SQLite file. On top there are two ways in: `cli`, the
-commands, and `api`, the HTTP interface and its page, which `digsite serve`
-starts. The arrows below are the imports between packages, as they are in the
-code:
+keeps each collection in one SQLite file. `library` keeps one collection per
+website, and builds a new one by running the first three stages. On top there
+are two ways in: `cli`, the commands, and `api`, the HTTP interface and its
+page, which `digsite serve` starts. The arrows below are the imports between
+packages, as they are in the code:
 
 ```mermaid
 flowchart LR
@@ -146,6 +151,13 @@ flowchart LR
     evaluation --> search
     evaluation --> ingest
     evaluation --> embedding
+    library --> crawl
+    library --> ingest
+    library --> index
+    library --> search
+    library --> store
+    library --> embedding
+    api --> library
     api --> answer
     api --> search
     api --> llm
@@ -157,9 +169,9 @@ and use none.)
 
 - **Dependencies point one way.** A stage uses the stages before it, never the
   ones after; the store uses only the domain types in `models`; nothing but the
-  entry point uses `cli`, and nothing but `cli` starts `api`; `api` serves what
-  the pipeline built and builds nothing itself; and `llm` and `embedding` know
-  nothing of the corpus.
+  entry point uses `cli`, and nothing but `cli` starts `api`; `api` adds
+  websites only by asking `library`, never by running a stage itself; and
+  `llm` and `embedding` know nothing of the corpus.
   `tests/test_architecture.py` reads the imports of every module and fails if
   any of this stops being true.
 - **Interfaces where there are alternatives.** `Retriever` is anything that
@@ -171,15 +183,17 @@ and use none.)
 - **Plain functions for algorithms, classes for state.** BM25 ranking, fusion,
   PageRank, chunking and the metrics are functions over data. Indexes,
   searchers, stores and clients are classes.
-- **Wiring in two places.** `CorpusSearch` builds the retrievers from what the
-  index stage stored and finds documents with them, and `Answerer.for_corpus`
-  builds the answer stage on top of it. The command line and the HTTP interface
-  only read their input, call these two and present the result: a search gives
-  the same documents in the terminal and in the browser.
+- **Wiring in three places.** `CorpusSearch` builds the retrievers from what
+  the index stage stored and finds documents with them; `Answerer.for_corpus`
+  builds the answer stage on top of it; and `Library` opens one `CorpusSearch`
+  per collection and runs the pipeline to build new ones. The command line and
+  the HTTP interface only read their input, call these and present the result:
+  a search gives the same documents in the terminal and in the browser.
 - **The HTTP interface is handed what it serves.** `create_app` receives the
-  corpus and the language model already built; it opens no files. The server
-  passes the real ones, the tests a small corpus and a scripted model. Its
-  request and response types are its own, kept apart from the domain types.
+  library, the build queue and the language model already built; it opens no
+  files. The server passes the real ones, the tests a few small collections, a
+  fake website and a scripted model. Its request and response types are its
+  own, kept apart from the domain types.
 - **Tests at the edges.** The crawler runs against an in-memory website and the
   Ollama client against a simulated server; a hashing embedder stands in for
   the neural model and a scripted model for the language model. No test
@@ -281,11 +295,13 @@ model. See the limitations below.
 
 ### `digsite serve`
 
-Serves search and answers over HTTP, and a page to use them from a browser, at
-`http://127.0.0.1:8000/`. The corpus is opened read-only, and the indexes and
-the embedding model are loaded before the first request. Takes the options of
-`digsite ask` except `--show-passages`, with `--mode` as the default search
-mode, and:
+Serves the collections over HTTP, with a page to search them, ask them
+questions and add websites, at `http://127.0.0.1:8000/`. It starts with no
+collection at all if there is none. Collections are opened read-only and their
+indexes loaded in the background; a website added from the page is crawled,
+ingested and indexed in the background, one at a time, into a new collection.
+Takes the options of `digsite ask` except `--show-passages` and
+`--collection`, with `--mode` as the default search mode, and:
 
 | Option | Meaning | Default |
 |---|---|---|
@@ -294,15 +310,18 @@ mode, and:
 
 | Endpoint | Does |
 |---|---|
-| `GET /` | The page: one box to search or ask, results, and answers with their sources |
-| `GET /api/search?q=…&mode=…&limit=…` | Documents that match, each with its best passage |
-| `POST /api/ask` with `{"question": …, "mode": …}` | An answer and the passages it was written from, or `answered: false` |
-| `GET /api/status` | What the corpus holds, and the search modes it allows |
+| `GET /` | The page: choose or add a website, search it or ask it, see answers with their sources |
+| `GET /api/collections` | The collections, with what they hold and the search modes they allow, and the websites being added |
+| `POST /api/collections` with `{"url": …, "max_pages": …, "language": …}` | Add a website; answers 202 at once and builds in the background |
+| `GET /api/search?collection=…&q=…&mode=…&limit=…` | Documents that match, each with its best passage |
+| `POST /api/ask` with `{"collection": …, "question": …, "mode": …}` | An answer and the passages it was written from, or `answered: false` |
+| `GET /api/status` | How many collections there are, whether one is being built, and the language model |
 | `GET /api/docs` | The interface, described and callable from the browser |
 
 Search works without the language model. If Ollama is not running, asking
-returns 503 with the reason. The address of the page holds the query
-(`/?q=…&mode=…&ask=1`), so a search can be reloaded, shared or gone back to.
+returns 503 with the reason. The address of the page holds the website and the
+query (`/?c=…&q=…&mode=…&ask=1`), so a search can be reloaded, shared or gone
+back to.
 
 ### `digsite authority`
 
@@ -506,10 +525,21 @@ Every mode ranks chunks and shows documents, each represented by its best chunk.
 
 ### Serve
 
-- **One corpus, many requests.** The server builds `CorpusSearch` once: the
-  inverted index and every chunk vector stay in memory, and each request only
-  reads a few chunks and documents from the database. Requests run in a pool of
-  threads that share one read-only connection.
+- **One file per website.** A collection is a corpus like any other, in
+  `<data-dir>/<id>.db`, with a title and the address it came from. The command
+  line works on one of them with `--collection ID` (default: `corpus`); the
+  server serves them all.
+- **Many requests, one copy of each collection.** The server opens each
+  collection once, read-only, and keeps its inverted index and chunk vectors
+  in memory; each request only reads a few chunks and documents from the
+  database. Requests run in a pool of threads that share one read-only
+  connection per collection, and one embedding model for all of them.
+- **Adding a website** crawls it, extracts its text and indexes it, in a
+  background thread, one website at a time. The crawl stays under the folder of
+  the start address. The new collection is written to a temporary file and
+  renamed only when complete, so a half-built one is never listed; if the
+  server stops midway, the temporary file is deleted when it starts again.
+  Searches keep working meanwhile.
 - **The page** is three static files and no framework: the server's JSON is put
   on the page as text, never as markup, and the page is served with a content
   security policy that only allows scripts from the server itself. Answers are
@@ -696,8 +726,12 @@ src/digsite/
   models.py            domain types shared by the stages and the store
   text.py              tokenisation
   cli/                 command-line interface, one module per group of commands
+  library/             collections: one corpus per website
+    library.py           listing and opening the collections of a directory
+    build.py             a website crawled, ingested and indexed into a new collection
+    queue.py             builds run in the background, one at a time
   api/                 HTTP interface
-    app.py               the application: endpoints over a corpus and a language model
+    app.py               the application: endpoints over the collections and a language model
     schemas.py           what the endpoints accept and return
     static/              the page: HTML, CSS and JavaScript, no build step
   crawl/               crawl stage
@@ -825,6 +859,13 @@ docs/decisions.md      why things are the way they are
 - The HTTP interface has no authentication and no limit on requests. It is
   meant for this computer, which is why it listens on 127.0.0.1 by default. With
   one CPU-bound language model, questions asked at once wait for each other.
+- Anyone who can reach the server can make it crawl any address, including
+  ones on the local network. That is acceptable for a server only this computer
+  can reach, and is one more reason not to expose it.
+- Websites cannot be removed, renamed or crawled again from the page: delete
+  the collection's file in the data folder (or the Docker volume) by hand.
+- A build interrupted by stopping the server is lost, and has to be asked for
+  again.
 - Each question stands alone: there is no conversation, and a follow-up
   question does not know the one before.
 - Windows paths in an answer can come out mangled: the model writes them into

@@ -1,7 +1,9 @@
 """The rules the packages of digsite follow when they depend on each other.
 
 The pipeline goes crawl → ingest → index → search → answer, with the store
-underneath, and two ways in on top: the command line and the HTTP interface.
+underneath. The library keeps one collection per website and runs the pipeline
+to build new ones. On top there are two ways in: the command line and the HTTP
+interface.
 These tests read the imports of every module, so that a shortcut against that
 shape fails here and not in review.
 """
@@ -40,7 +42,7 @@ IMPORTS = package_imports()
 
 def test_the_imports_were_found() -> None:
     # Guards the other tests against passing because nothing was read.
-    assert {"answer", "api", "cli", "index", "search", "store"} <= set(IMPORTS)
+    assert {"answer", "api", "cli", "index", "library", "search", "store"} <= set(IMPORTS)
 
 
 def test_no_two_packages_depend_on_each_other() -> None:
@@ -72,11 +74,12 @@ def test_only_the_entry_point_uses_the_command_line() -> None:
 @pytest.mark.parametrize(
     ("package", "later_stages"),
     [
-        ("crawl", {"ingest", "index", "search", "answer", "evaluation", "api"}),
-        ("ingest", {"index", "search", "answer", "evaluation", "api"}),
-        ("index", {"search", "answer", "evaluation", "api"}),
-        ("search", {"answer", "evaluation", "api"}),
-        ("answer", {"evaluation", "api"}),
+        ("crawl", {"ingest", "index", "search", "answer", "library", "evaluation", "api"}),
+        ("ingest", {"index", "search", "answer", "library", "evaluation", "api"}),
+        ("index", {"search", "answer", "library", "evaluation", "api"}),
+        ("search", {"answer", "library", "evaluation", "api"}),
+        ("answer", {"library", "evaluation", "api"}),
+        ("library", {"answer", "evaluation", "api"}),
     ],
 )
 def test_a_stage_does_not_depend_on_the_stages_after_it(
@@ -91,9 +94,11 @@ def test_only_the_command_line_starts_the_http_interface() -> None:
     assert users == ["cli"]
 
 
-def test_the_http_interface_serves_an_indexed_corpus_and_builds_nothing() -> None:
-    # It reads what the pipeline built; crawling, ingesting and evaluating are not its job.
+def test_the_http_interface_builds_collections_only_through_the_library() -> None:
+    # Adding a website runs the whole pipeline, but that is the library's job: the
+    # interface only asks for it. Evaluating is not its job at all.
     assert IMPORTS["api"] & {"cli", "crawl", "ingest", "index", "evaluation"} == set()
+    assert "library" in IMPORTS["api"]
 
 
 def test_language_models_and_embeddings_know_nothing_of_the_corpus() -> None:

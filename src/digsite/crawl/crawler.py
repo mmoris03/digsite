@@ -15,7 +15,7 @@ from digsite.crawl.parsing import decode_body, parse_page
 from digsite.crawl.robots import RobotsCache
 from digsite.crawl.throttle import HostThrottle
 from digsite.crawl.urls import Scope, canonicalize, origin_of
-from digsite.models import SkipReason
+from digsite.models import Progress, SkipReason
 from digsite.store import CrawlStore
 
 logger = logging.getLogger(__name__)
@@ -104,8 +104,17 @@ class Crawler:
         self._fetcher = Fetcher(client, config.max_bytes)
         self._throttle = HostThrottle(config.delay_seconds, sleep, clock)
 
-    def run(self) -> CrawlStats:
-        """Crawl until the frontier is empty or `max_pages` pages are stored."""
+    @property
+    def seeds(self) -> tuple[str, ...]:
+        """The start URLs, in canonical form."""
+        return self._seeds
+
+    def run(self, *, progress: Progress | None = None) -> CrawlStats:
+        """Crawl until the frontier is empty or `max_pages` pages are stored.
+
+        Args:
+            progress: Told the pages stored so far, out of `max_pages`, after each one.
+        """
         stats = CrawlStats()
         frontier = Frontier(self._scope, self._config.max_depth, seen=self._store.known_urls())
         for seed in self._seeds:
@@ -116,7 +125,10 @@ class Crawler:
 
         while frontier and stats.saved < self._config.max_pages:
             url, depth = frontier.pop()
+            saved = stats.saved
             self._visit(url, depth, frontier, stats)
+            if progress is not None and stats.saved > saved:
+                progress(stats.saved, self._config.max_pages)
         return stats
 
     def _visit(self, url: str, depth: int, frontier: Frontier, stats: CrawlStats) -> None:

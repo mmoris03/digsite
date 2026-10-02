@@ -589,6 +589,9 @@ the `index` package that owns it.
 
 ## 29. The HTTP interface is a thin layer, handed what it serves
 
+*Since decision 34 it serves many collections and can add new ones, through
+the `library` package; what follows still holds for each collection.*
+
 **Decision.** `digsite serve` runs a FastAPI application with three endpoints
 (`/api/search`, `/api/ask`, `/api/status`) and a page. `create_app` receives
 the corpus and the language model already built; it opens no file and makes no
@@ -676,6 +679,8 @@ the same image. It can be added later without touching the code.
 
 ## 32. One image for every command, and the data outside it
 
+*The corpus is no longer mounted from `./data`: see decision 37.*
+
 **Decision.** The `Dockerfile` packages the command line, not only the server:
 `docker compose run --rm digsite crawl …` works like `digsite crawl …`, and
 the image's default command is `serve`. The corpus lives in `./data`, mounted
@@ -723,3 +728,88 @@ push costs a few minutes and catches that.
 
 **Why on Linux.** The project was developed on Windows. CI is the first place
 it runs on another system, which is what a user of the container gets.
+
+## 34. One collection per website, each in its own file
+
+**Decision.** The server serves a directory of collections, `<id>.db` each,
+and the page lets the user choose one and add new ones from an address. A
+collection is exactly the corpus of the earlier milestones, with a title and
+the address it came from stored in it. The new `library` package lists,
+opens and builds collections; the command line works on one of them with
+`--collection ID`, whose default, `corpus`, is the file every earlier corpus
+already was.
+
+**Why a file per website, not one database for all.** Every stage was built for
+one corpus: one inverted index, one set of vectors, one link graph. Separate
+files keep all of that as it is, keep each website's results apart without a
+column added to every table and query, and make removing a website deleting a
+file. Above all, building a new website never writes to a file that the server
+is reading: the hard part of updating an index in use simply does not arise.
+
+**Why a new package.** Building a collection runs crawl, ingest and index; the
+HTTP interface must not run them itself (decision 28's rules, which
+`tests/test_architecture.py` enforces). `library` is the one place that does,
+below both ways in, so the server and the command line build collections the
+same way.
+
+**Cost.** Searching several websites at once would mean searching several
+collections and fusing the results; it is not done.
+
+## 35. Websites are built in the background, one at a time, and appear complete
+
+**Decision.** Adding a website answers at once (202) with the id the new
+collection will have. A single background thread then crawls the website,
+extracts its text and indexes it, into `<id>.db.partial`, and renames the file
+to `<id>.db` only when everything has succeeded. The page polls
+`GET /api/collections` to show how far each build has got.
+
+**Why one at a time.** Crawling waits a second between requests, and embedding
+uses every core of the processor. Two builds at once would compete for both and
+finish no sooner; queued, each finishes as soon as it can.
+
+**Why a temporary file.** A collection is listed by its file name. Renaming
+only a complete file means a half-built collection is never listed, and a
+failed build leaves nothing behind. A build cut short by stopping the server
+leaves its temporary file, which the server deletes when it starts again.
+
+**Why a daemon thread and no task system.** A build takes minutes and nothing
+else needs to run in the background. A thread, a queue and a lock are all of
+it; a task queue with its broker would be the largest part of the system. The
+cost is that a build in progress is lost when the server stops.
+
+**What the crawl may visit.** The pages under the folder of the address given:
+from `https://docs.python.org/3/tutorial/`, the tutorial and nothing else. It is
+the scope a person usually means, and keeps a build from wandering over a whole
+site.
+
+**A bug the tests caught.** If making the HTTP client for a build failed, the
+error escaped the worker thread, which died: later builds would have stayed
+queued forever. Every error now ends the build that raised it and nothing
+else, and a test asks for a build after a failing one.
+
+## 36. Searches and builds share one embedding model
+
+**Decision.** The library loads each embedding model once and hands the same
+instance to every collection and to the builds.
+
+**Why it is safe.** The tokenizer library behind the model has a reputation for
+failing when called from several threads at once. Measured before relying on
+it: 8 threads embedding queries and 2 embedding batches of passages, at the
+same time on one instance, gave no error and no wrong vector in two runs. One
+instance instead of one per collection saves about 470 MB per collection.
+
+**Cost.** While a website is being indexed, searches compete with it for the
+processor and take longer.
+
+## 37. The containers keep the collections in a Docker volume
+
+**Decision.** `compose.yaml` mounts a named volume on `/app/data`, not the
+host's `./data` folder.
+
+**Why.** The server now writes: every website added is a new file. A folder of
+the host that does not exist yet is created by Docker as root on Linux, and the
+container's unprivileged user then cannot write to it. A named volume is
+initialised from the image, where `/app/data` belongs to that user.
+
+**Cost.** The files are not visible as a folder of the host. A corpus built
+outside Docker can still be copied in with `docker compose cp`.

@@ -6,13 +6,14 @@ import pytest
 
 from cli.corpora import CACHING, LOGGING, SITE, make_corpus
 from digsite import __version__
+from digsite.cli import corpus as corpus_module
 from digsite.cli import main
 from digsite.cli.common import CORPUS_FILENAME
 from digsite.cli.corpus import format_crawl_summary
 from digsite.crawl import CrawlStats
-from digsite.models import Link, SkipReason
-from digsite.store import AuthorityStore, CrawlStore, DocumentStore, connect
-from fakes import article_html
+from digsite.models import CollectionInfo, Link, SkipReason
+from digsite.store import AuthorityStore, CollectionStore, CrawlStore, DocumentStore, connect
+from fakes import FakeSite, article_html, html_page
 
 
 def read_counts(output: str) -> dict[str, int]:
@@ -272,3 +273,36 @@ def test_stats_before_indexing_shows_an_empty_index(
     assert counts["embedded chunks"] == 0
     assert counts["link-scored documents"] == 0
     assert output.splitlines()[-1].split() == ["embedding", "model", "(none)"]
+
+
+def test_a_crawl_records_where_the_collection_comes_from(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    site = FakeSite(
+        {
+            f"{SITE}/docs/": html_page("/docs/a", title="The Docs"),
+            f"{SITE}/docs/a": html_page(title="Page A"),
+        }
+    )
+    monkeypatch.setattr(corpus_module, "http_client", lambda config: site.new_client())
+    where = ["--data-dir", str(tmp_path), "--collection", "docs"]
+
+    main(["crawl", "--seed", f"{SITE}/docs/", "--delay", "0", *where])
+    main(["crawl", "--seed", f"{SITE}/docs/a", "--delay", "0", *where])
+
+    assert [path.name for path in tmp_path.iterdir()] == ["docs.db"]
+    with closing(connect(tmp_path / "docs.db")) as connection:
+        # The first crawl names the collection; later ones leave the name alone.
+        assert CollectionStore(connection).info() == CollectionInfo("The Docs", f"{SITE}/docs/")
+
+
+@pytest.mark.parametrize("collection", ["Docs", "../docs", "-docs", "my docs"])
+def test_a_collection_id_must_be_a_safe_file_name(
+    collection: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        main(["stats", "--data-dir", str(tmp_path), f"--collection={collection}"])
+
+    assert exit_info.value.code == 2
+    assert "lowercase letters, digits and hyphens" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []

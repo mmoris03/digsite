@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from digsite.crawl.parsing import decode_body
 from digsite.ingest.content import Content, extract_content
 from digsite.ingest.dedup import DEFAULT_MAX_DISTANCE, content_hash, find_duplicates, fingerprint
-from digsite.models import DocumentStats, Page
+from digsite.models import DocumentStats, Page, Progress
 from digsite.store import CrawlStore, DocumentStore
 from digsite.text import tokenize
 
@@ -38,6 +38,7 @@ def ingest(
     max_distance: int = DEFAULT_MAX_DISTANCE,
     force: bool = False,
     extract: Extractor = extract_content,
+    progress: Progress | None = None,
 ) -> IngestStats:
     """Turn stored pages into documents and mark the duplicates among them.
 
@@ -51,6 +52,7 @@ def ingest(
         max_distance: Largest Hamming distance between near-duplicates.
         force: Extract every page again, discarding existing documents.
         extract: Function that extracts the main content of an HTML page.
+        progress: Told the pages extracted so far, out of those pending, after each one.
     """
     if force:
         document_store.clear()
@@ -59,6 +61,8 @@ def ingest(
     pending = [page for page in crawl_store.pages() if page.id not in done and not page.noindex]
     for number, page in enumerate(pending, start=1):
         _extract_page(page, crawl_store, document_store, extract)
+        if progress is not None:
+            progress(number, len(pending))
         if number % _PROGRESS_EVERY == 0 or number == len(pending):
             logger.info("extracted %d/%d pages", number, len(pending))
 

@@ -22,9 +22,11 @@ from digsite.index.lexical_index_store import LexicalIndexStore
 from digsite.index.pipeline import build_authority, build_index
 from digsite.ingest.dedup import DEFAULT_MAX_DISTANCE
 from digsite.ingest.pipeline import IngestStats, ingest
+from digsite.library import describe
 from digsite.store import (
     AuthorityStore,
     ChunkStore,
+    CollectionStore,
     CrawlStore,
     DocumentStore,
     connect,
@@ -158,6 +160,9 @@ def _crawl(args: argparse.Namespace) -> int:
             # Every page is committed as it is stored, so re-running resumes the crawl.
             print("\nInterrupted; what was downloaded so far is stored.", file=sys.stderr)
             return 130
+        collection = CollectionStore(connection)
+        if collection.info() is None and stats.saved:
+            collection.save(describe(CrawlStore(connection), crawler.seeds[0]))
     print(format_crawl_summary(stats))
     return 0
 

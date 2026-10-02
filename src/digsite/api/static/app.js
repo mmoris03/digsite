@@ -5,8 +5,19 @@ const queryInput = document.getElementById("query");
 const modeSelect = document.getElementById("mode");
 const output = document.getElementById("output");
 const statusLine = document.getElementById("status");
+const collectionBar = document.getElementById("collection-bar");
+const collectionSelect = document.getElementById("collection");
+const addToggle = document.getElementById("add-toggle");
+const addForm = document.getElementById("add-form");
+const buildsBox = document.getElementById("builds");
 
-let current = null; // AbortController of the request in progress
+let languageModel = "";
+let collections = []; // as /api/collections lists them
+let selected = ""; // id of the collection searched
+const watched = new Set(); // builds asked for or seen running while this page is open
+const dismissed = new Set(); // builds no longer to show: failures closed, websites announced
+let pollTimer = null;
+let current = null; // AbortController of the search or question in progress
 let currentKey = ""; // the query string of what is shown
 let timer = null;
 
@@ -21,7 +32,7 @@ function el(tag, attributes = {}, ...children) {
   return node;
 }
 
-// Only web addresses become links: a corpus could hold anything.
+// Only web addresses become links: a website could hold anything.
 function link(url, ...children) {
   if (!/^https?:\/\//i.test(url)) return el("span", {}, ...children);
   return el("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, ...children);
@@ -30,6 +41,8 @@ function link(url, ...children) {
 function message(text, kind = "") {
   return el("p", { class: `message ${kind}`.trim() }, text);
 }
+
+const count = (number) => number.toLocaleString("en");
 
 async function getJSON(url, options = {}) {
   const response = await fetch(url, options);
@@ -55,38 +68,179 @@ function stopTimer() {
   }
 }
 
-async function loadStatus() {
+// --- Websites
+
+async function refreshLibrary() {
+  clearTimeout(pollTimer);
+  let data;
   try {
-    const status = await getJSON("api/status");
-    const count = (number) => number.toLocaleString("en");
-    statusLine.textContent =
-      `${count(status.documents)} documents · ${count(status.chunks)} passages · ` +
-      `answers by ${status.language_model}`;
-    if (!status.index_up_to_date) {
-      statusLine.append(el("span", { class: "warning" }, " · the index is out of date"));
-    }
-    modeSelect.replaceChildren(
-      ...status.modes.map((mode) =>
-        el("option", { value: mode, selected: mode === status.default_mode }, mode)),
-    );
+    data = await getJSON("api/collections");
   } catch (error) {
     statusLine.textContent = `The server is not answering: ${error.message}`;
+    pollTimer = setTimeout(refreshLibrary, 5000);
+    return;
+  }
+  collections = data.collections;
+  const builds = data.builds;
+  for (const build of builds) {
+    if (build.stage !== "done" && build.stage !== "failed") watched.add(build.id);
+  }
+  // A website added while the page is open becomes the one searched when it is ready.
+  const ready = builds.find((build) => build.stage === "done" && watched.has(build.id)
+    && !dismissed.has(`done:${build.collection}`)
+    && collections.some((collection) => collection.id === build.collection));
+  renderCollections(ready ? ready.collection : null);
+  renderBuilds(builds);
+  if (builds.some((build) => build.stage !== "done" && build.stage !== "failed")) {
+    pollTimer = setTimeout(refreshLibrary, 1500);
   }
 }
 
+function renderCollections(newlyReady) {
+  collectionSelect.replaceChildren(...collections.map((collection) =>
+    el("option", { value: collection.id }, collection.title)));
+  const empty = collections.length === 0;
+  collectionBar.hidden = empty;
+  form.hidden = empty;
+  if (empty) {
+    selected = "";
+    showAddForm(true);
+    statusLine.textContent = "No website yet: add one to start.";
+    return;
+  }
+  const keep = collections.some((collection) => collection.id === selected);
+  const choice = newlyReady || (keep ? selected : collections[0].id);
+  if (newlyReady) dismissed.add(`done:${newlyReady}`);
+  selectCollection(choice, newlyReady !== null && newlyReady !== selected);
+}
+
+function selectCollection(id, announce = false) {
+  const collection = collections.find((item) => item.id === id);
+  if (!collection) return;
+  const changed = id !== selected;
+  selected = id;
+  collectionSelect.value = id;
+  statusLine.replaceChildren(
+    `${count(collection.documents)} documents · ${count(collection.chunks)} passages`,
+    collection.source ? " · from " : "",
+    collection.source ? link(collection.source, collection.source.replace(/^https?:\/\//, "")) : "",
+    languageModel ? ` · answers by ${languageModel}` : "",
+  );
+  if (!collection.index_up_to_date) {
+    statusLine.append(el("span", { class: "warning" }, " · the index is out of date"));
+  }
+  const previous = modeSelect.value;
+  modeSelect.replaceChildren(...collection.modes.map((mode) => el("option", { value: mode }, mode)));
+  modeSelect.value = collection.modes.includes(previous) && !changed ? previous : collection.default_mode;
+  if (changed && announce) {
+    output.replaceChildren(message(`${collection.title} is ready to search.`));
+  }
+}
+
+function showAddForm(open) {
+  addForm.hidden = !open;
+  addToggle.setAttribute("aria-expanded", String(open));
+  if (open && collections.length > 0) document.getElementById("add-url").focus();
+}
+
+function renderBuilds(builds) {
+  const shown = builds.filter((build) => watched.has(build.id) && !dismissed.has(build.id)
+    && !(build.stage === "done" && dismissed.has(`done:${build.collection}`)));
+  buildsBox.replaceChildren(...shown.map(buildCard));
+}
+
+function buildCard(build) {
+  const address = build.url.replace(/^https?:\/\//, "");
+  const parts = [el("div", { class: "build-title" }, link(build.url, address))];
+  if (build.stage === "failed") {
+    parts.push(el("p", { class: "error" }, `Could not add it: ${build.error}`));
+    const close = el("button", { type: "button", class: "secondary small-button" }, "Dismiss");
+    close.addEventListener("click", () => {
+      dismissed.add(build.id);
+      refreshLibrary();
+    });
+    parts.push(close);
+    return el("div", { class: "build failed" }, parts);
+  }
+  const elapsed = Math.max(0, Math.round(Date.now() / 1000 - build.submitted));
+  parts.push(el("p", { class: "small" }, `${stageText(build)} · ${formatDuration(elapsed)}`));
+  const bar = el("progress", { max: build.total || 1, "aria-label": "Progress" });
+  if (build.total) bar.value = Math.min(build.done, build.total);
+  else bar.removeAttribute("value");
+  parts.push(bar);
+  return el("div", { class: "build" }, parts);
+}
+
+function stageText(build) {
+  switch (build.stage) {
+    case "queued":
+      return "Waiting to start";
+    case "crawling":
+      return `Downloading pages: ${count(build.done)} of at most ${count(build.total)}`;
+    case "extracting":
+      return `Extracting text: ${count(build.done)} of ${count(build.total)} pages`;
+    case "indexing":
+      return build.total
+        ? `Indexing: ${count(build.done)} of ${count(build.total)} passages embedded`
+        : "Indexing: splitting the pages into passages";
+    default:
+      return build.stage;
+  }
+}
+
+function formatDuration(seconds) {
+  if (seconds < 60) return `${seconds} s`;
+  return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, "0")} s`;
+}
+
+async function addWebsite(event) {
+  event.preventDefault();
+  const button = addForm.querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    const build = await getJSON("api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: document.getElementById("add-url").value.trim(),
+        max_pages: Number(document.getElementById("add-pages").value),
+        language: document.getElementById("add-language").value || null,
+      }),
+    });
+    watched.add(build.id);
+    addForm.reset();
+    setDefaultLanguage();
+    if (collections.length > 0) showAddForm(false);
+    await refreshLibrary();
+  } catch (error) {
+    buildsBox.prepend(el("p", { class: "message error" }, error.message));
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function setDefaultLanguage() {
+  const language = (navigator.language || "").slice(0, 2);
+  document.getElementById("add-language").value = language === "es" ? "spanish" : "english";
+}
+
+// --- Searching and asking
+
 function run(action, query, mode, remember) {
-  if (!query) return;
+  if (!query || !selected) return;
   if (current) current.abort();
   stopTimer();
   current = new AbortController();
 
-  const params = new URLSearchParams({ q: query, mode });
+  const params = new URLSearchParams({ c: selected, q: query, mode });
   if (action === "ask") params.set("ask", "1");
   currentKey = params.toString();
   if (remember) history.pushState(null, "", `?${currentKey}`);
   document.title = `${query} – Digsite`;
 
-  const task = action === "ask" ? ask(query, mode, current.signal) : search(query, mode, current.signal);
+  const task = action === "ask"
+    ? ask(selected, query, mode, current.signal)
+    : search(selected, query, mode, current.signal);
   task.catch((error) => {
     if (error.name === "AbortError") return;
     stopTimer();
@@ -94,11 +248,9 @@ function run(action, query, mode, remember) {
   });
 }
 
-// --- Search
-
-async function search(query, mode, signal) {
+async function search(collection, query, mode, signal) {
   output.replaceChildren(message("Searching…"));
-  const params = new URLSearchParams({ q: query, mode, limit: "10" });
+  const params = new URLSearchParams({ collection, q: query, mode, limit: "10" });
   const data = await getJSON(`api/search?${params}`, { signal });
   if (data.results.length === 0) {
     output.replaceChildren(message("No document matches."));
@@ -122,7 +274,7 @@ function resultItem(result) {
 
 // --- Ask
 
-async function ask(query, mode, signal) {
+async function ask(collection, query, mode, signal) {
   const started = Date.now();
   const progress = message("");
   const tick = () => {
@@ -138,7 +290,7 @@ async function ask(query, mode, signal) {
   const data = await getJSON("api/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question: query, mode }),
+    body: JSON.stringify({ collection, question: query, mode }),
     signal,
   });
   stopTimer();
@@ -252,9 +404,24 @@ form.addEventListener("submit", (event) => {
   run(action, queryInput.value.trim(), modeSelect.value, true);
 });
 
-// The address holds the query, so that a search can be reloaded, shared or gone back to.
+collectionSelect.addEventListener("change", () => {
+  if (current) current.abort();
+  stopTimer();
+  selectCollection(collectionSelect.value);
+  output.replaceChildren();
+  currentKey = new URLSearchParams({ c: selected }).toString();
+  history.pushState(null, "", `?${currentKey}`);
+});
+
+addToggle.addEventListener("click", () => showAddForm(addForm.hidden));
+addForm.addEventListener("submit", addWebsite);
+
+// The address holds the website and the query, so that a search can be reloaded,
+// shared or gone back to.
 function runFromAddress() {
   const params = new URLSearchParams(location.search);
+  const wanted = params.get("c");
+  if (wanted && wanted !== selected) selectCollection(wanted);
   if (params.toString() === currentKey) return;
   const query = params.get("q") || "";
   const mode = params.get("mode");
@@ -265,10 +432,21 @@ function runFromAddress() {
   if (query) {
     run(params.get("ask") === "1" ? "ask" : "search", query, modeSelect.value, false);
   } else {
-    currentKey = "";
+    currentKey = params.toString();
     output.replaceChildren();
   }
 }
 
+async function start() {
+  setDefaultLanguage();
+  try {
+    languageModel = (await getJSON("api/status")).language_model;
+  } catch {
+    // The list of websites says what is wrong.
+  }
+  await refreshLibrary();
+  runFromAddress();
+}
+
 window.addEventListener("popstate", runFromAddress);
-loadStatus().then(runFromAddress);
+start();

@@ -365,3 +365,16 @@ def test_a_second_run_resumes_without_downloading_again(
 def test_rejects_invalid_seeds(store: CrawlStore, clock: FakeClock, seeds: tuple[str, ...]) -> None:
     with pytest.raises(ValueError, match="Seeds must be absolute"):
         crawl(FakeSite({}), store, clock, seeds=seeds)
+
+
+def test_reports_progress_after_each_stored_page(store: CrawlStore, clock: FakeClock) -> None:
+    site = FakeSite({f"{SITE}/": html_page("/1", "/missing"), f"{SITE}/1": html_page()})
+    reports: list[tuple[int, int]] = []
+    config = CrawlConfig(seeds=(f"{SITE}/",), max_pages=5)
+
+    Crawler(config, store, site.client, sleep=clock.sleep, clock=clock).run(
+        progress=lambda done, total: reports.append((done, total))
+    )
+
+    # The missing page is skipped: it stores nothing, so it reports nothing.
+    assert reports == [(1, 5), (2, 5)]

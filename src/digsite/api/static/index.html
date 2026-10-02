@@ -11,12 +11,51 @@
   <main>
     <header>
       <h1>Digsite</h1>
-      <p id="status" class="muted">Connecting…</p>
+      <p class="muted">Search a website, and ask it questions.</p>
     </header>
-    <form id="form" role="search" autocomplete="off">
-      <label class="visually-hidden" for="query">Search the documents or ask a question</label>
+
+    <section class="library" aria-label="Websites">
+      <div id="collection-bar" class="collection-bar" hidden>
+        <label for="collection">Website</label>
+        <select id="collection"></select>
+        <button type="button" id="add-toggle" class="secondary"
+                aria-expanded="false" aria-controls="add-form">Add a website</button>
+      </div>
+      <p id="status" class="muted small">Connecting…</p>
+
+      <form id="add-form" class="add-form" autocomplete="off" hidden>
+        <h2>Add a website</h2>
+        <label class="field">Start address
+          <input id="add-url" type="url" required maxlength="2000"
+                 placeholder="https://docs.python.org/3/tutorial/">
+        </label>
+        <div class="row">
+          <label class="field">Pages, at most
+            <input id="add-pages" type="number" min="1" max="500" value="50" required>
+          </label>
+          <label class="field">Language
+            <select id="add-language">
+              <option value="english">English</option>
+              <option value="spanish">Spanish</option>
+              <option value="">Other</option>
+            </select>
+          </label>
+          <button type="submit">Add</button>
+        </div>
+        <p class="muted small">
+          Only the pages under the folder of the start address are downloaded, one per
+          second, and then made searchable. On a computer without a GPU, indexing a
+          hundred pages takes several minutes more. You can keep searching meanwhile.
+        </p>
+      </form>
+
+      <div id="builds" aria-live="polite"></div>
+    </section>
+
+    <form id="form" role="search" autocomplete="off" hidden>
+      <label class="visually-hidden" for="query">Search the website or ask a question</label>
       <input id="query" name="q" type="search" required maxlength="500"
-             placeholder="Search the documents, or ask a question">
+             placeholder="Search the website, or ask a question">
       <div class="controls">
         <button type="submit" value="search">Search</button>
         <button type="submit" value="ask" class="secondary">Ask</button>

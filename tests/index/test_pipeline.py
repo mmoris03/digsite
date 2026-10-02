@@ -239,3 +239,30 @@ def test_rebuilding_replaces_the_lexical_index(
     assert loaded is not None
     assert loaded[1] == AnalyzerSettings(None)
     assert loaded[0].postings("logs") is not None
+
+
+def test_reports_progress_while_embedding(
+    store: CrawlStore,
+    document_store: DocumentStore,
+    chunk_store: ChunkStore,
+    index_store: LexicalIndexStore,
+) -> None:
+    add_document(store, document_store, "/a", "Caching", CACHING)
+    add_document(store, document_store, "/b", "Logging", LOGGING)
+    reports: list[tuple[int, int]] = []
+
+    def report(done: int, total: int) -> None:
+        reports.append((done, total))
+
+    build_index(document_store, chunk_store, index_store, ENGLISH, progress=report)
+    assert reports == []  # without embeddings there is nothing slow to report
+
+    build_index(
+        document_store,
+        chunk_store,
+        index_store,
+        ENGLISH,
+        embedder=HashingEmbedder(32),
+        progress=report,
+    )
+    assert reports == [(3, 3)]

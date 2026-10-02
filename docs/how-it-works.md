@@ -297,23 +297,37 @@ and fails if that stops being true. A few interfaces let parts be swapped:
 | `LanguageModel` (`llm/base.py`) | Ollama; a scripted model for tests | the answer stage |
 
 The command line builds nothing itself: `CorpusSearch` assembles the
-retrievers from the stores and turns the chunks they find into documents, and
-`Answerer.for_corpus` assembles the answer stage on top of them. The HTTP
-interface calls the same two.
+retrievers from the stores and turns the chunks they find into documents,
+`Answerer.for_corpus` assembles the answer stage on top of them, and `Library`
+keeps one `CorpusSearch` per collection and builds new collections. The HTTP
+interface calls the same three.
 
 ## Serving it
 
-`digsite serve` opens the corpus read-only, builds `CorpusSearch` once and
-loads the indexes and the embedding model before accepting requests: about 20
-seconds. After that, a hybrid search takes about 40 ms over HTTP (median of 24),
-against 29 ms in the terminal.
-`create_app` (`api/app.py`) is handed the corpus and the language model and
-defines three endpoints over them: `/api/search` calls `find_documents`,
-`/api/ask` calls `Answerer.ask`, and `/api/status` counts what the corpus
-holds. The page at `/` (`api/static/`) calls those endpoints from the browser.
-Requests run in threads that share one read-only database connection, opened
+`digsite serve` serves every collection in its data folder: one SQLite file per
+website, `<id>.db`, each the corpus this document followed from crawl to
+answer. `Library` (`library/library.py`) opens each one read-only, builds its
+`CorpusSearch` once and loads its indexes in the background, sharing one
+embedding model among all of them. After that, a hybrid search takes about 40
+ms over HTTP, against 29 ms in the terminal.
+
+`create_app` (`api/app.py`) is handed the library, the build queue and the
+language model, and defines the endpoints over them: `/api/collections` lists
+the collections and adds one, `/api/search` calls `find_documents` on the
+chosen collection, and `/api/ask` calls `Answerer.ask` on it. The page at `/`
+(`api/static/`) calls those endpoints from the browser. Requests run in
+threads that share one read-only database connection per collection, opened
 without the `sqlite3` statement cache, which is not safe to share (decision
 30).
+
+**Adding a website from the page** runs steps 1 to 3 of this document in a
+background thread (`library/build.py`, `library/queue.py`): the crawl stays
+under the folder of the address given, the text is extracted, and the passages
+are indexed and embedded. Everything is written to `<id>.db.partial`, renamed
+to `<id>.db` only once complete, so the website appears in the list only when
+it can be searched. Each stage reports how far it has got, and the page shows
+it. The English Python tutorial, 15 pages and 317 passages, took 53 seconds on
+the laptop this was measured on.
 
 ## How it is checked
 

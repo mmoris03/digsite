@@ -1,7 +1,11 @@
 """Domain types shared by the pipeline stages and the store."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+
+# Told how far a long task has got: (done, total). The total may be an upper bound.
+type Progress = Callable[[int, int], None]
 
 
 class SkipReason(StrEnum):
@@ -158,6 +162,19 @@ class Chunk:
     def indexed_text(self) -> str:
         """What is indexed and embedded: the passage preceded by its context."""
         return indexed_text(self.context, self.text)
+
+
+@dataclass(frozen=True, slots=True)
+class CollectionInfo:
+    """What a collection is, as people see it.
+
+    Attributes:
+        title: Name to show, usually the title of the start page.
+        source: Where its documents come from: the URL the crawl started at.
+    """
+
+    title: str
+    source: str
 
 
 def indexed_text(context: str, text: str) -> str:
