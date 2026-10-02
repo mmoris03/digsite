@@ -1,0 +1,22 @@
+# Questions the Spanish Python documentation crawled for queries.tsv does not answer.
+# One question per line. The right response to each of them is to decline.
+# The first twelve are about software the corpus names in passing at most; the
+# last six are general knowledge that a language model knows on its own.
+cómo crear un DataFrame con pandas
+cómo desplegar una aplicación Django en producción
+cómo declarar una variable mutable en Rust
+qué es un pod de Kubernetes
+cómo entrenar una red neuronal con PyTorch
+cómo hacer una petición HTTP con la biblioteca requests
+cómo configurar un proxy inverso con nginx
+cómo escribir una consulta SQL con JOIN
+cómo crear una rama en git
+cómo leer una hoja de Excel
+cómo dibujar una gráfica con matplotlib
+cómo crear un componente en React
+cuál es la capital de Australia
+cuál es la velocidad de la luz
+quién escribió Cien años de soledad
+cuántos habitantes tiene Madrid
+en qué año llegó el hombre a la Luna
+cuál es la fórmula del agua

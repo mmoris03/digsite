@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Digsite</title>
+  <link rel="stylesheet" href="static/style.css">
+  <script src="static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Digsite</h1>
+      <p id="status" class="muted">Connecting…</p>
+    </header>
+    <form id="form" role="search" autocomplete="off">
+      <label class="visually-hidden" for="query">Search the documents or ask a question</label>
+      <input id="query" name="q" type="search" required maxlength="500"
+             placeholder="Search the documents, or ask a question">
+      <div class="controls">
+        <button type="submit" value="search">Search</button>
+        <button type="submit" value="ask" class="secondary">Ask</button>
+        <label>Mode <select id="mode" name="mode"></select></label>
+      </div>
+    </form>
+    <section id="output" aria-live="polite"></section>
+  </main>
+</body>
+</html>

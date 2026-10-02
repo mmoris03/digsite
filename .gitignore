@@ -1,0 +1,14 @@
+# Environments and caches
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+
+# Generated data (corpus, indexes): rebuilt with the CLI
+data/
+
+# Secrets
+.env

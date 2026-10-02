@@ -1,0 +1,73 @@
+# Queries over the Spanish Python documentation, each with the pages that answer it.
+# One query per line: the query, then the URLs of its relevant pages, separated by tabs.
+# See README.md in this directory for how the corpus is crawled and how the pages were judged.
+cómo crear un entorno virtual	https://docs.python.org/es/3/tutorial/venv.html
+instalar paquetes con pip	https://docs.python.org/es/3/tutorial/venv.html	https://docs.python.org/es/3/installing/index.html
+diferencia entre lista y tupla	https://docs.python.org/es/3/tutorial/datastructures.html	https://docs.python.org/es/3/faq/design.html
+cómo capturar excepciones con try y except	https://docs.python.org/es/3/tutorial/errors.html	https://docs.python.org/es/3/reference/compound_stmts.html
+definir mis propias excepciones	https://docs.python.org/es/3/tutorial/errors.html
+qué es un decorador	https://docs.python.org/es/3/glossary.html	https://docs.python.org/es/3/reference/compound_stmts.html
+novedades de la versión 3.14	https://docs.python.org/es/3/whatsnew/3.14.html
+leer y escribir archivos	https://docs.python.org/es/3/tutorial/inputoutput.html
+formatear cadenas con f-strings	https://docs.python.org/es/3/tutorial/inputoutput.html	https://docs.python.org/es/3/reference/lexical_analysis.html	https://docs.python.org/es/3/glossary.html
+grupos de captura en expresiones regulares	https://docs.python.org/es/3/howto/regex.html
+ordenar una lista de diccionarios por una clave	https://docs.python.org/es/3/howto/sorting.html
+orden de resolución de métodos con herencia múltiple	https://docs.python.org/es/3/howto/mro.html	https://docs.python.org/es/3/tutorial/classes.html	https://docs.python.org/es/3/glossary.html
+argumentos opcionales en la línea de comandos con argparse	https://docs.python.org/es/3/howto/argparse.html	https://docs.python.org/es/3/library/argparse.html
+subcomandos en argparse	https://docs.python.org/es/3/library/argparse.html
+guardar mensajes de registro en un archivo	https://docs.python.org/es/3/howto/logging.html	https://docs.python.org/es/3/howto/logging-cookbook.html
+rotación de archivos de log	https://docs.python.org/es/3/howto/logging-cookbook.html
+por qué 0.1 + 0.2 no es igual a 0.3	https://docs.python.org/es/3/tutorial/floatingpoint.html	https://docs.python.org/es/3/faq/design.html
+codificación utf-8 al leer un archivo de texto	https://docs.python.org/es/3/howto/unicode.html	https://docs.python.org/es/3/tutorial/inputoutput.html
+descargar una página web con urllib	https://docs.python.org/es/3/howto/urllib2.html	https://docs.python.org/es/3/tutorial/stdlib.html
+crear un servidor con sockets	https://docs.python.org/es/3/howto/sockets.html
+qué es el GIL y cómo ejecutar Python sin él	https://docs.python.org/es/3/howto/free-threading-python.html	https://docs.python.org/es/3/glossary.html	https://docs.python.org/es/3/whatsnew/3.14.html	https://docs.python.org/es/3/faq/library.html	https://docs.python.org/es/3/using/configure.html	https://docs.python.org/es/3/using/cmdline.html
+enumeraciones con valores automáticos	https://docs.python.org/es/3/howto/enum.html
+funciones lambda	https://docs.python.org/es/3/tutorial/controlflow.html	https://docs.python.org/es/3/reference/expressions.html	https://docs.python.org/es/3/howto/functional.html	https://docs.python.org/es/3/glossary.html
+generadores y yield	https://docs.python.org/es/3/tutorial/classes.html	https://docs.python.org/es/3/howto/functional.html	https://docs.python.org/es/3/reference/expressions.html	https://docs.python.org/es/3/reference/simple_stmts.html	https://docs.python.org/es/3/glossary.html
+coincidencia de patrones con match y case	https://docs.python.org/es/3/tutorial/controlflow.html	https://docs.python.org/es/3/reference/compound_stmts.html
+dónde busca Python los módulos que importo	https://docs.python.org/es/3/tutorial/modules.html	https://docs.python.org/es/3/reference/import.html	https://docs.python.org/es/3/using/windows.html
+variables de entorno que cambian el comportamiento del intérprete	https://docs.python.org/es/3/using/cmdline.html
+instalar Python en Windows	https://docs.python.org/es/3/using/windows.html
+instalar Python en un Mac	https://docs.python.org/es/3/using/mac.html
+compilar Python desde el código fuente	https://docs.python.org/es/3/using/configure.html	https://docs.python.org/es/3/using/unix.html	https://docs.python.org/es/3/using/windows.html
+hacer una aplicación con ventanas y botones	https://docs.python.org/es/3/faq/gui.html	https://docs.python.org/es/3/library/tkinter.html	https://docs.python.org/es/3/using/mac.html
+descriptores __get__ y __set__	https://docs.python.org/es/3/howto/descriptor.html	https://docs.python.org/es/3/reference/datamodel.html	https://docs.python.org/es/3/glossary.html
+métodos especiales como __init__ y __repr__	https://docs.python.org/es/3/reference/datamodel.html	https://docs.python.org/es/3/glossary.html
+clases base abstractas	https://docs.python.org/es/3/library/abc.html	https://docs.python.org/es/3/glossary.html
+trabajar con direcciones IP y redes	https://docs.python.org/es/3/howto/ipaddress.html
+interfaz de texto en la terminal	https://docs.python.org/es/3/howto/curses.html
+programación asíncrona con async y await	https://docs.python.org/es/3/howto/a-conceptual-overview-of-asyncio.html	https://docs.python.org/es/3/reference/compound_stmts.html	https://docs.python.org/es/3/reference/datamodel.html	https://docs.python.org/es/3/reference/expressions.html	https://docs.python.org/es/3/glossary.html
+anotaciones de tipo en funciones	https://docs.python.org/es/3/howto/annotations.html	https://docs.python.org/es/3/reference/compound_stmts.html	https://docs.python.org/es/3/glossary.html	https://docs.python.org/es/3/tutorial/controlflow.html
+cómo informar de un fallo de Python	https://docs.python.org/es/3/bugs.html	https://docs.python.org/es/3/faq/general.html
+depurar extensiones escritas en C con gdb	https://docs.python.org/es/3/howto/gdb_helpers.html	https://docs.python.org/es/3/faq/extending.html
+analizar el rendimiento con perf en Linux	https://docs.python.org/es/3/howto/perf_profiling.html
+precedencia de operadores	https://docs.python.org/es/3/reference/expressions.html
+ámbitos y espacios de nombres	https://docs.python.org/es/3/tutorial/classes.html	https://docs.python.org/es/3/reference/executionmodel.html	https://docs.python.org/es/3/glossary.html
+cuándo usar global y nonlocal	https://docs.python.org/es/3/reference/simple_stmts.html	https://docs.python.org/es/3/tutorial/classes.html	https://docs.python.org/es/3/faq/programming.html	https://docs.python.org/es/3/reference/executionmodel.html
+listas por comprensión	https://docs.python.org/es/3/tutorial/datastructures.html	https://docs.python.org/es/3/howto/functional.html	https://docs.python.org/es/3/reference/expressions.html	https://docs.python.org/es/3/glossary.html
+operaciones con conjuntos	https://docs.python.org/es/3/tutorial/datastructures.html
+recorrer un diccionario obteniendo clave y valor	https://docs.python.org/es/3/tutorial/datastructures.html	https://docs.python.org/es/3/howto/functional.html
+por qué Python usa la sangría para agrupar el código	https://docs.python.org/es/3/faq/design.html	https://docs.python.org/es/3/reference/lexical_analysis.html
+convertir un script en un ejecutable	https://docs.python.org/es/3/faq/windows.html	https://docs.python.org/es/3/faq/programming.html	https://docs.python.org/es/3/tutorial/appendix.html	https://docs.python.org/es/3/faq/library.html
+aritmética decimal exacta para cantidades de dinero	https://docs.python.org/es/3/tutorial/stdlib2.html	https://docs.python.org/es/3/tutorial/floatingpoint.html
+comprimir datos	https://docs.python.org/es/3/tutorial/stdlib.html
+medir cuánto tarda en ejecutarse un fragmento de código	https://docs.python.org/es/3/tutorial/stdlib.html
+trabajar con fechas y horas	https://docs.python.org/es/3/tutorial/stdlib.html
+ejecutar tareas en varios hilos	https://docs.python.org/es/3/tutorial/stdlib2.html	https://docs.python.org/es/3/faq/library.html
+referencias débiles	https://docs.python.org/es/3/tutorial/stdlib2.html
+usar Python en una aplicación Android	https://docs.python.org/es/3/using/android.html
+autocompletado en el intérprete interactivo	https://docs.python.org/es/3/tutorial/interactive.html
+depuración remota de un proceso en ejecución	https://docs.python.org/es/3/howto/remote_debugging.html	https://docs.python.org/es/3/whatsnew/3.14.html
+gramática formal del lenguaje	https://docs.python.org/es/3/reference/grammar.html
+por qué un argumento por defecto mutable se comparte entre llamadas	https://docs.python.org/es/3/tutorial/controlflow.html	https://docs.python.org/es/3/reference/expressions.html	https://docs.python.org/es/3/reference/compound_stmts.html
+escribir módulos de extensión en C	https://docs.python.org/es/3/extending/index.html	https://docs.python.org/es/3/faq/extending.html
+puedo desinstalar Python de mi ordenador	https://docs.python.org/es/3/faq/installed.html
+qué editor o IDE usar	https://docs.python.org/es/3/using/editors.html
+para qué sirve Python	https://docs.python.org/es/3/tutorial/appetite.html	https://docs.python.org/es/3/faq/general.html	https://docs.python.org/es/3/faq/installed.html
+módulo itertools	https://docs.python.org/es/3/howto/functional.html
+por qué las cadenas son inmutables	https://docs.python.org/es/3/faq/design.html
+opciones -c y -m al ejecutar el intérprete	https://docs.python.org/es/3/using/cmdline.html	https://docs.python.org/es/3/tutorial/interpreter.html
+how to profile Python code	https://docs.python.org/es/3/howto/perf_profiling.html	https://docs.python.org/es/3/tutorial/stdlib.html
+what is a virtual environment	https://docs.python.org/es/3/tutorial/venv.html	https://docs.python.org/es/3/glossary.html	https://docs.python.org/es/3/installing/index.html
+sentencia with y gestores de contexto	https://docs.python.org/es/3/reference/compound_stmts.html	https://docs.python.org/es/3/reference/datamodel.html	https://docs.python.org/es/3/glossary.html

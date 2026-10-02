@@ -1,0 +1,15 @@
+# Queries that look for one particular page of the Spanish Python documentation: the front
+# page of a section, not a passage that answers a question.
+# Same format as queries.tsv. See README.md in this directory.
+tutorial de Python	https://docs.python.org/es/3/tutorial/index.html
+referencia del lenguaje	https://docs.python.org/es/3/reference/index.html
+preguntas frecuentes	https://docs.python.org/es/3/faq/index.html
+guías howto	https://docs.python.org/es/3/howto/index.html
+glosario	https://docs.python.org/es/3/glossary.html
+página principal de la documentación	https://docs.python.org/es/3/index.html
+configuración y uso de Python	https://docs.python.org/es/3/using/index.html
+biblioteca estándar	https://docs.python.org/es/3/library/index.html
+extender e incrustar el intérprete	https://docs.python.org/es/3/extending/index.html
+manual de la API de C	https://docs.python.org/es/3/c-api/index.html
+derechos de autor	https://docs.python.org/es/3/copyright.html
+instalar módulos de Python	https://docs.python.org/es/3/installing/index.html
