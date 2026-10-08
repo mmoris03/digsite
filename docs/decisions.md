@@ -25,3 +25,25 @@ measurement and not a hunch, that repeating a word should raise its weight.
 Changing it means `_postings_of_query` also returns how many times each word
 was typed. The current behaviour is pinned by the `a repeated word` cases in
 `tests/test_index.py`.
+
+## 2. How digsite searches is something you can choose
+
+**Decision.** digsite is meant to show how a search engine works inside, not
+only to find things. So the way it searches is a setting: each way of
+matching or ordering documents is kept as an option, and a new one is added
+next to the ones that already exist instead of replacing them. Today the
+options are finding the documents that have every word of the query
+(`search_and`) or any of them (`search_or`).
+
+**Why.** Running two approaches on the same documents with the same query,
+and seeing where their results differ, explains each of them better than
+either one alone. It also makes them easy to measure against each other.
+
+**Alternatives.** A single, fixed way of searching: less code and a simpler
+interface, but every improvement would erase the approach before it, and with
+it the chance to compare them. Keeping the options has a cost too: each one
+has to keep working and stay tested, and not every combination of settings
+makes sense.
+
+**Revisit when.** An option costs more to keep than it shows, for instance
+one that never gives a result different from another option.
