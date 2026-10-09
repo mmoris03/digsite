@@ -7,29 +7,30 @@ from digsite.index import build_index, search_and, search_or
 def pizza_index():
     """The inverted index of five pizzas, written by hand.
 
-    It is the index `build_index` makes from their ingredients, but written out
-    so that the search tests do not depend on `build_index`: a document's id is
-    the position of its pizza in the list.
+    It is what `build_index` must make from their ingredients, and what the
+    search tests start from, so they do not depend on `build_index`. A
+    document's id is the position of its pizza in the list, and no pizza
+    repeats an ingredient, so every count is 1.
     """
     return {
-        "anchovies": {3},
-        "artichokes": {0},
-        "fontina": {2},
-        "garlic": {1},
-        "gorgonzola": {2},
-        "mozzarella": {0, 2, 3, 4},
-        "mushrooms": {0},
-        "oil": {0, 1, 3, 4},
-        "olives": {0},
-        "oregano": {1, 3, 4},
-        "sausage": {4},
-        "stracchino": {2},
-        "tomato": {0, 1, 2, 3, 4},
+        "anchovies":    {3: 1},
+        "artichokes":   {0: 1},
+        "fontina":      {2: 1},
+        "garlic":       {1: 1},
+        "gorgonzola":   {2: 1},
+        "mozzarella":   {0: 1, 2: 1, 3: 1, 4: 1},
+        "mushrooms":    {0: 1},
+        "oil":          {0: 1, 1: 1, 3: 1, 4: 1},
+        "olives":       {0: 1},
+        "oregano":      {1: 1, 3: 1, 4: 1},
+        "sausage":      {4: 1},
+        "stracchino":   {2: 1},
+        "tomato":       {0: 1, 1: 1, 2: 1, 3: 1, 4: 1},
     }
 
 
-def test_builds_the_inverted_index_of_the_pizzas():
-    """Every ingredient maps to the ids of the pizzas that have it.
+def test_builds_the_inverted_index_of_the_pizzas(pizza_index):
+    """Every ingredient maps to the pizzas that have it, with how many times.
 
     The documents are the ingredients of five pizzas. A document's id is its
     position in the list.
@@ -42,7 +43,8 @@ def test_builds_the_inverted_index_of_the_pizzas():
     - a plural is another word: "olives" is indexed, "olive" is not;
     - no word is missing or left over, since a key that is not in the
       expected dict, or one that is only there, makes the comparison fail;
-    - the values are sets, not lists, since {0, 1} != [0, 1].
+    - counts are kept per document: no pizza repeats an ingredient, so every
+      count is 1, even for a word that is in all of them.
     """
     pizzas = [
         "artichokes mozzarella mushrooms oil olives tomato",
@@ -52,29 +54,15 @@ def test_builds_the_inverted_index_of_the_pizzas():
         "mozzarella oil oregano sausage tomato",
     ]
 
-    assert build_index(pizzas) == {
-        "anchovies":    {3},
-        "artichokes":   {0},
-        "fontina":      {2},
-        "garlic":       {1},
-        "gorgonzola":   {2},
-        "mozzarella":   {0, 2, 3, 4},
-        "mushrooms":    {0},
-        "oil":          {0, 1, 3, 4},
-        "olives":       {0},
-        "oregano":      {1, 3, 4},
-        "sausage":      {4},
-        "stracchino":   {2},
-        "tomato":       {0, 1, 2, 3, 4},
-    }
+    assert build_index(pizzas) == pizza_index
 
 
-def test_a_repeated_word_counts_once_per_document():
+def test_a_repeated_word_is_counted():
     """A small corpus written inline, for a case the pizzas do not have.
 
-    Each document id is stored once however many times the word occurs.
+    The count is how many times the word occurs in the document.
     """
-    assert build_index(["go go go"]) == {"go": {0}}
+    assert build_index(["go go go"]) == {"go": {0: 3}}
 
 
 def test_no_documents_give_an_empty_index():
@@ -92,7 +80,7 @@ def test_an_empty_document_keeps_its_position():
     could not catch a plain `split()` instead, since they have no capitals and
     no punctuation. The tokenizing rules themselves are tested with `tokenize`.
     """
-    assert build_index(["", "Hello World!"]) == {"hello": {1}, "world": {1}}
+    assert build_index(["", "Hello World!"]) == {"hello": {1: 1}, "world": {1: 1}}
 
 
 @pytest.mark.parametrize(
@@ -166,7 +154,7 @@ def test_changing_the_result_does_not_change_the_index(search, pizza_index):
 
     result.add(99)
 
-    assert pizza_index["oregano"] == {1, 3, 4}
+    assert pizza_index["oregano"] == {1: 1, 3: 1, 4: 1}
 
 
 @pytest.mark.parametrize("search", [search_and, search_or], ids=["and", "or"])
@@ -176,7 +164,7 @@ def test_a_search_leaves_the_index_as_it_was(search, pizza_index):
     A query with several words is the risky one: `&=` or `|=` on the first
     word's set would change that entry of the index.
     """
-    before = {word: set(documents) for word, documents in pizza_index.items()}
+    before = {word: dict(postings) for word, postings in pizza_index.items()}
 
     search(pizza_index, "mozzarella oregano")
 

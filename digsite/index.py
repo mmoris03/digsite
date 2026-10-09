@@ -1,40 +1,46 @@
 from digsite.text import tokenize
 
 
-def build_index(docs: list[str]) -> dict[str, set[int]]:
-    """Map each word to the ids of the documents that contain it."""
-    index: dict[str, set[int]] = {}
+def build_index(docs: list[str]) -> dict[str, dict[int, int]]:
+    """Map each word to the documents that contain it, with how many times."""
+    index: dict[str, dict[int, int]] = {}
     for i, doc in enumerate(docs):
         for token in tokenize(doc):
-            index.setdefault(token, set())
-            index[token].add(i)
+            index.setdefault(token, dict())
+            index[token].setdefault(i, 0)
+            index[token][i] += 1
 
     return index
 
 
-def _postings_of_query(index: dict[str, set[int]], query: str) -> dict[str, set[int]]:
+def _postings_of_query(index: dict[str, dict[int, int]], query: str) -> dict[str, dict[int, int]]:
     """The postings of each word of the query, by word.
 
     A word that is not indexed stays in the result with no documents, so that
     a search can tell "nobody has it" from "it was not asked for". A word
-    repeated in the query appears once: repetitions do not count.
+    repeated in the query appears once.
     """
-    return {word: index.get(word, set()) for word in tokenize(query)}
+    return {
+        word: index.get(word, {})
+        for word in tokenize(query)
+    }
 
 
-def search_and(index: dict[str, set[int]], query: str) -> set[int]:
+def search_and(index: dict[str, dict[int, int]], query: str) -> set[int]:
     """Ids of the documents that contain every word of the query."""
     postings = _postings_of_query(index, query)
     if not postings:
-        # An intersection needs at least one set, and a query with no words
-        # should find nothing, not every document.
+        # A query with no words finds nothing
         return set()
 
-    return set.intersection(*postings.values())
+    return set.intersection(*(set(documents) for documents in postings.values()))
 
 
-def search_or(index: dict[str, set[int]], query: str) -> set[int]:
+def search_or(index: dict[str, dict[int, int]], query: str) -> set[int]:
     """Ids of the documents that contain at least one word of the query."""
     postings = _postings_of_query(index, query)
+    if not postings:
+        # A query with no words finds nothing
+        return set()
 
-    return set().union(*postings.values())
+    return set.union(*(set(documents) for documents in postings.values()))
