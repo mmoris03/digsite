@@ -7,7 +7,7 @@ from digsite.ranking import rank
 def pizza_texts_index():
     """The inverted index of four short texts about pizza, written by hand.
 
-    Unlike the pizzas, these texts repeat tokens, so they show what counting
+    Unlike the pizzas, these texts repeat tokens, so they show what tf
     does. A document's id is the position of its text in the list:
 
     0. "the pizza with the thin crust and the crispy edge"
@@ -57,7 +57,7 @@ def pizza_texts_index():
         pytest.param(" ?! ", [], id="a query with no tokens"),
     ],
 )
-def test_rank_orders_the_pizzas_by_how_many_words_they_have(pizza_index, query, expected):
+def test_rank_orders_the_pizzas_by_how_many_tokens_they_have(pizza_index, query, expected):
     """No pizza repeats an ingredient, so a pizza scores one point per query token.
 
     - a tie goes to the smaller id, whatever the order of the tokens in the
@@ -74,16 +74,16 @@ def test_rank_orders_the_pizzas_by_how_many_words_they_have(pizza_index, query, 
     ("query", "expected"),
     [
         pytest.param("mozzarella", [(3, 3), (2, 1)], id="more occurrences first"),
-        pytest.param("mozzarella basil", [(3, 3), (2, 2)], id="the counts are added"),
+        pytest.param("mozzarella basil", [(3, 3), (2, 2)], id="the tfs are added"),
         pytest.param(
             "pizza pizza", [(0, 1), (1, 1), (2, 1)], id="a repeated query token counts once"
         ),
     ],
 )
-def test_rank_scores_by_how_often_the_words_occur(pizza_texts_index, query, expected):
-    """A text scores, for each distinct query token, how many times it occurs in it.
+def test_rank_scores_by_the_tf_of_the_query_tokens(pizza_texts_index, query, expected):
+    """A text scores the tf of each distinct query token in it, added up.
 
-    - "mozzarella" occurs three times in text 3 and once in text 2;
+    - the tf of "mozzarella" is 3 in text 3 and 1 in text 2;
     - text 2 scores 1 for "mozzarella" plus 1 for "basil", and text 3 scores
       3 for "mozzarella" alone;
     - typing a token twice in the query does not count it twice.
@@ -91,12 +91,12 @@ def test_rank_scores_by_how_often_the_words_occur(pizza_texts_index, query, expe
     assert rank(pizza_texts_index, query) == expected
 
 
-def test_counting_favours_words_that_are_everywhere(pizza_texts_index):
+def test_tf_favours_tokens_that_are_everywhere(pizza_texts_index):
     """Known limitation: for "the pizza dough", the text about dough is not first.
 
     Text 0 scores 3 for "the", a token every text has, and 1 for "pizza", so it
     comes before text 1, the only one with "dough". The result is pinned here
-    so that this behaviour of counting is documented.
+    so that this behaviour of ranking by tf is documented.
     """
     assert rank(pizza_texts_index, "the pizza dough") == [(0, 4), (1, 3), (2, 2), (3, 1)]
 

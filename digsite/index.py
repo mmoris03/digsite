@@ -2,11 +2,12 @@ from digsite.text import tokenize
 
 
 def build_index(docs: list[str]) -> dict[str, dict[int, int]]:
-    """Map each token to the documents that contain it, with how many times.
+    """Map each token to the documents that contain it, with its tf in each.
 
-    [doc, ...] -> {token: {doc: count, ...}, ...}
+    [doc, ...] -> {token: {doc: tf, ...}, ...}
 
-    A document is identified by its position in the list.
+    A document is identified by its position in the list, and a token's tf
+    (term frequency) in it is how many times the token occurs there.
     """
     index: dict[str, dict[int, int]] = {}
     for i, doc in enumerate(docs):
@@ -21,7 +22,7 @@ def build_index(docs: list[str]) -> dict[str, dict[int, int]]:
 def postings_of_query(index: dict[str, dict[int, int]], query: str) -> dict[str, dict[int, int]]:
     """The postings of each token of the query, by token.
 
-    index, query -> {token: {doc: count, ...}, ...}
+    index, query -> {token: {doc: tf, ...}, ...}
 
     A token that is not indexed stays in the result with no documents, so
     that a search can tell "nobody has it" from "it was not asked for". A

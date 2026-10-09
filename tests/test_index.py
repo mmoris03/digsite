@@ -4,7 +4,7 @@ from digsite.index import build_index, search_and, search_or
 
 
 def test_builds_the_inverted_index_of_the_pizzas(pizza_index):
-    """Every ingredient maps to the pizzas that have it, with how many times.
+    """Every ingredient maps to the pizzas that have it, with its tf in each.
 
     The documents are the ingredients of five pizzas. A document's id is its
     position in the list.
@@ -17,8 +17,8 @@ def test_builds_the_inverted_index_of_the_pizzas(pizza_index):
     - a plural is another token: "olives" is indexed, "olive" is not;
     - no token is missing or left over, since a key that is not in the
       expected dict, or one that is only there, makes the comparison fail;
-    - counts are kept per document: no pizza repeats an ingredient, so every
-      count is 1, even for a token that is in all of them.
+    - tfs are kept per document: no pizza repeats an ingredient, so every tf
+      is 1, even for a token that is in all of them.
     """
     pizzas = [
         "artichokes mozzarella mushrooms oil olives tomato",
@@ -31,10 +31,10 @@ def test_builds_the_inverted_index_of_the_pizzas(pizza_index):
     assert build_index(pizzas) == pizza_index
 
 
-def test_a_repeated_word_is_counted():
+def test_a_repeated_token_is_counted():
     """A small corpus written inline, for a case the pizzas do not have.
 
-    The count is how many times the token occurs in the document.
+    Its tf is how many times the token occurs in the document.
     """
     assert build_index(["go go go"]) == {"go": {0: 3}}
 
@@ -71,7 +71,7 @@ def test_an_empty_document_keeps_its_position():
         pytest.param(" ?! ", set(), id="a query with no tokens"),
     ],
 )
-def test_search_and_returns_the_documents_with_every_word(pizza_index, query, expected):
+def test_search_and_returns_the_documents_with_every_token(pizza_index, query, expected):
     """The result is the intersection of the documents of each token.
 
     - three tokens: all of them are intersected, not just the first two;
@@ -102,7 +102,7 @@ def test_search_and_returns_the_documents_with_every_word(pizza_index, query, ex
         pytest.param(" ?! ", set(), id="a query with no tokens"),
     ],
 )
-def test_search_or_returns_the_documents_with_any_word(pizza_index, query, expected):
+def test_search_or_returns_the_documents_with_any_token(pizza_index, query, expected):
     """The result is the union of the documents of each token.
 
     - three tokens: all of them are joined, not just the first two;

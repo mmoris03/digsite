@@ -6,13 +6,13 @@ def rank(index: dict[str, dict[int, int]], query: str) -> list[tuple[int, float]
 
     index, query -> [(doc, score), ...]
 
-    A document scores how many times each distinct token of the query occurs
-    in it, added up. A tie goes to the document that comes first.
+    A document scores the tf of each distinct token of the query in it, added
+    up. A tie goes to the document that comes first.
     """
     scores: dict[int, float] = {}
     for postings in postings_of_query(index, query).values():
-        for document, count in postings.items():
-            scores[document] = scores.get(document, 0) + count
+        for document, tf in postings.items():
+            scores[document] = scores.get(document, 0) + tf
 
     # Highest score first, and a tie goes to the smaller id
     return sorted(scores.items(), key=lambda pair: (-pair[1], pair[0]))

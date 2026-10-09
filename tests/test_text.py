@@ -19,8 +19,8 @@ def test_only_punctuation_has_no_tokens():
 def test_keeps_order_and_repetitions():
     """Tokens come in text order and a repeated token appears each time.
 
-    Later stages count how often each token occurs, so the result must be a
-    list, not a set, and must not be sorted.
+    Later stages need each token's tf, how often it occurs, so the result
+    must be a list, not a set, and must not be sorted.
     """
     assert tokenize("the cat saw the dog") == ["the", "cat", "saw", "the", "dog"]
 

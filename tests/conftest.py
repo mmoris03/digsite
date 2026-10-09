@@ -8,7 +8,7 @@ def pizza_index():
     It is what `build_index` must make from their ingredients, and what the
     search and ranking tests start from, so they do not depend on
     `build_index`. A document's id is the position of its pizza in the list,
-    and no pizza repeats an ingredient, so every count is 1.
+    and no pizza repeats an ingredient, so every tf is 1.
     """
     return {
         "anchovies":    {3: 1},
