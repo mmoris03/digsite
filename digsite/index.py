@@ -13,7 +13,7 @@ def build_index(docs: list[str]) -> dict[str, dict[int, int]]:
     return index
 
 
-def _postings_of_query(index: dict[str, dict[int, int]], query: str) -> dict[str, dict[int, int]]:
+def postings_of_query(index: dict[str, dict[int, int]], query: str) -> dict[str, dict[int, int]]:
     """The postings of each word of the query, by word.
 
     A word that is not indexed stays in the result with no documents, so that
@@ -28,7 +28,7 @@ def _postings_of_query(index: dict[str, dict[int, int]], query: str) -> dict[str
 
 def search_and(index: dict[str, dict[int, int]], query: str) -> set[int]:
     """Ids of the documents that contain every word of the query."""
-    postings = _postings_of_query(index, query)
+    postings = postings_of_query(index, query)
     if not postings:
         # A query with no words finds nothing
         return set()
@@ -38,7 +38,7 @@ def search_and(index: dict[str, dict[int, int]], query: str) -> set[int]:
 
 def search_or(index: dict[str, dict[int, int]], query: str) -> set[int]:
     """Ids of the documents that contain at least one word of the query."""
-    postings = _postings_of_query(index, query)
+    postings = postings_of_query(index, query)
     if not postings:
         # A query with no words finds nothing
         return set()
