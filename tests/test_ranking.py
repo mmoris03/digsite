@@ -7,7 +7,7 @@ from digsite.ranking import rank
 def pizza_texts_index():
     """The inverted index of four short texts about pizza, written by hand.
 
-    Unlike the pizzas, these texts repeat words, so they show what counting
+    Unlike the pizzas, these texts repeat tokens, so they show what counting
     does. A document's id is the position of its text in the list:
 
     0. "the pizza with the thin crust and the crispy edge"
@@ -45,27 +45,27 @@ def pizza_texts_index():
         pytest.param(
             "mozzarella oil oregano sausage",
             [(4, 4), (3, 3), (0, 2), (1, 2), (2, 1)],
-            id="more matching words first",
+            id="more matching tokens first",
         ),
         pytest.param("sausage garlic", [(1, 1), (4, 1)], id="ties go to the smaller id"),
-        pytest.param("garlic", [(1, 1)], id="only documents with a query word"),
+        pytest.param("garlic", [(1, 1)], id="only documents with a query token"),
         pytest.param(
-            "basil oil", [(0, 1), (1, 1), (3, 1), (4, 1)], id="a word that is not indexed"
+            "basil oil", [(0, 1), (1, 1), (3, 1), (4, 1)], id="a token that is not indexed"
         ),
         pytest.param("Garlic!", [(1, 1)], id="capitals and punctuation"),
         pytest.param("", [], id="an empty query"),
-        pytest.param(" ?! ", [], id="a query with no words"),
+        pytest.param(" ?! ", [], id="a query with no tokens"),
     ],
 )
 def test_rank_orders_the_pizzas_by_how_many_words_they_have(pizza_index, query, expected):
-    """No pizza repeats an ingredient, so a pizza scores one point per query word.
+    """No pizza repeats an ingredient, so a pizza scores one point per query token.
 
-    - a tie goes to the smaller id, whatever the order of the words in the
+    - a tie goes to the smaller id, whatever the order of the tokens in the
       query: "sausage" comes before "garlic", but pizza 1 before pizza 4;
-    - a pizza with none of the words does not appear, rather than scoring 0;
-    - a word that is not indexed adds nothing;
+    - a pizza with none of the tokens does not appear, rather than scoring 0;
+    - a token that is not indexed adds nothing;
     - the query goes through `tokenize`, like the documents did;
-    - a query with no words finds nothing.
+    - a query with no tokens finds nothing.
     """
     assert rank(pizza_index, query) == expected
 
@@ -76,17 +76,17 @@ def test_rank_orders_the_pizzas_by_how_many_words_they_have(pizza_index, query, 
         pytest.param("mozzarella", [(3, 3), (2, 1)], id="more occurrences first"),
         pytest.param("mozzarella basil", [(3, 3), (2, 2)], id="the counts are added"),
         pytest.param(
-            "pizza pizza", [(0, 1), (1, 1), (2, 1)], id="a repeated query word counts once"
+            "pizza pizza", [(0, 1), (1, 1), (2, 1)], id="a repeated query token counts once"
         ),
     ],
 )
 def test_rank_scores_by_how_often_the_words_occur(pizza_texts_index, query, expected):
-    """A text scores, for each distinct query word, how many times it occurs in it.
+    """A text scores, for each distinct query token, how many times it occurs in it.
 
     - "mozzarella" occurs three times in text 3 and once in text 2;
     - text 2 scores 1 for "mozzarella" plus 1 for "basil", and text 3 scores
       3 for "mozzarella" alone;
-    - typing a word twice in the query does not count it twice.
+    - typing a token twice in the query does not count it twice.
     """
     assert rank(pizza_texts_index, query) == expected
 
@@ -94,7 +94,7 @@ def test_rank_scores_by_how_often_the_words_occur(pizza_texts_index, query, expe
 def test_counting_favours_words_that_are_everywhere(pizza_texts_index):
     """Known limitation: for "the pizza dough", the text about dough is not first.
 
-    Text 0 scores 3 for "the", a word every text has, and 1 for "pizza", so it
+    Text 0 scores 3 for "the", a token every text has, and 1 for "pizza", so it
     comes before text 1, the only one with "dough". The result is pinned here
     so that this behaviour of counting is documented.
     """
@@ -103,7 +103,7 @@ def test_counting_favours_words_that_are_everywhere(pizza_texts_index):
 
 def test_ranking_leaves_the_index_as_it_was(pizza_index):
     """Adding up the scores must not change the postings of the index."""
-    before = {word: dict(postings) for word, postings in pizza_index.items()}
+    before = {token: dict(postings) for token, postings in pizza_index.items()}
 
     rank(pizza_index, "mozzarella oil")
 

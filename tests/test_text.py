@@ -1,8 +1,8 @@
 from digsite.text import tokenize
 
 
-def test_splits_words_and_lowercases_them():
-    """The simplest case: words come out separated and in lowercase."""
+def test_splits_text_into_lowercase_tokens():
+    """The simplest case: tokens come out separated and in lowercase."""
     assert tokenize("Hello World") == ["hello", "world"]
 
 
@@ -12,21 +12,21 @@ def test_empty_text_has_no_tokens():
 
 
 def test_only_punctuation_has_no_tokens():
-    """Separators alone make no word."""
+    """Separators alone make no token."""
     assert tokenize(" ... ") == []
 
 
 def test_keeps_order_and_repetitions():
-    """Tokens come in text order and a repeated word appears each time.
+    """Tokens come in text order and a repeated token appears each time.
 
-    Later stages count how often each word occurs, so the result must be a
+    Later stages count how often each token occurs, so the result must be a
     list, not a set, and must not be sorted.
     """
     assert tokenize("the cat saw the dog") == ["the", "cat", "saw", "the", "dog"]
 
 
-def test_case_and_punctuation_do_not_change_the_word():
-    """"Python", "python" and "PYTHON!" are the same word."""
+def test_case_and_punctuation_do_not_change_the_token():
+    """"Python", "python" and "PYTHON!" are the same token."""
     assert tokenize("Python, python; PYTHON!") == ["python", "python", "python"]
 
 
@@ -35,7 +35,7 @@ def test_keeps_accents_and_enye():
     assert tokenize("Canción piña ÁRBOL") == ["canción", "piña", "árbol"]
 
 
-def test_non_latin_scripts_are_words():
+def test_non_latin_scripts_make_tokens():
     """Word characters are not limited to the Latin alphabet."""
     assert tokenize("日本語 テキスト") == ["日本語", "テキスト"]
 
@@ -45,8 +45,8 @@ def test_casefold_expands_eszett():
     assert tokenize("Straße") == ["strasse"]
 
 
-def test_any_whitespace_separates_words():
-    """Tabs and line breaks separate words just like spaces."""
+def test_any_whitespace_separates_tokens():
+    """Tabs and line breaks separate tokens just like spaces."""
     assert tokenize("tab\tnew\nline") == ["tab", "new", "line"]
 
 
@@ -65,7 +65,7 @@ def test_underscore_is_a_word_character():
     assert tokenize("snake_case") == ["snake_case"]
 
 
-def test_hyphen_separates_words():
+def test_hyphen_separates_tokens():
     """kebab-case is two tokens: the hyphen does separate, unlike the underscore."""
     assert tokenize("kebab-case") == ["kebab", "case"]
 
@@ -79,7 +79,7 @@ def test_decimal_point_splits_a_number():
 
 
 def test_plus_signs_are_dropped():
-    """Known limitation: "C++" becomes "c", the same word as plain "C"."""
+    """Known limitation: "C++" becomes "c", the same token as plain "C"."""
     assert tokenize("C++") == ["c"]
 
 
