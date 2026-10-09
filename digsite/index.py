@@ -1,3 +1,5 @@
+from collections import Counter
+
 from digsite.text import tokenize
 
 
@@ -11,10 +13,9 @@ def build_index(docs: list[str]) -> dict[str, dict[int, int]]:
     """
     index: dict[str, dict[int, int]] = {}
     for i, doc in enumerate(docs):
-        for token in tokenize(doc):
-            index.setdefault(token, dict())
-            index[token].setdefault(i, 0)
-            index[token][i] += 1
+        for token, tf in Counter(tokenize(doc)).items():
+            index.setdefault(token, {})
+            index[token][i] = tf
 
     return index
 
